@@ -394,6 +394,26 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({
+      success: true,
+      status: "ok",
+      database: "ok",
+      checkedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      status: "error",
+      database: "error",
+      error: err.message,
+      checkedAt: new Date().toISOString(),
+    });
+  }
+});
+
 app.get("/test-db", async (req, res) => {
   try {
     const result = await pool.query("SELECT NOW()");
