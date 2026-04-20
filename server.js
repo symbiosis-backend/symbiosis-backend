@@ -127,6 +127,84 @@ function getAndroidUpdateManifest() {
   }
 }
 
+function getCharacterContentCatalog() {
+  const filePath = path.join(__dirname, "downloads", "content", "characters.json");
+  const fallback = {
+    success: true,
+    version: process.env.CHARACTER_CONTENT_VERSION || "1.0",
+    checkedAt: new Date().toISOString(),
+    characters: [
+      createCharacterContent("Tiger_Male", "Kaplan", "Tiger", "Male", true, 0, 1000, 16, 0.05, 0.05, 0.12, 1.7),
+      createCharacterContent("Tiger_Female", "Dişi Kaplan", "Tiger", "Female", false, 10000, 1000, 16, 0.05, 0.05, 0.12, 1.7),
+      createCharacterContent("Fox_Male", "Tilki", "Fox", "Male", false, 30000, 900, 14, 0.03, 0.12, 0.18, 1.8),
+      createCharacterContent("Fox_Female", "Dişi Tilki", "Fox", "Female", false, 50000, 900, 14, 0.03, 0.12, 0.18, 1.8),
+      createCharacterContent("Wolf_Male", "Kurt", "Wolf", "Male", false, 70000, 1100, 15, 0.08, 0.1, 0.1, 1.65),
+      createCharacterContent("Wolf_Female", "Dişi Kurt", "Wolf", "Female", false, 90000, 1100, 15, 0.08, 0.1, 0.1, 1.65),
+      createCharacterContent("Bear_Male", "Ayı", "Bear", "Male", false, 110000, 1300, 12, 0.15, 0.08, 0.06, 1.5),
+      createCharacterContent("Bear_Female", "Dişi Ayı", "Bear", "Female", false, 130000, 1300, 12, 0.15, 0.08, 0.06, 1.5),
+    ],
+  };
+
+  try {
+    if (!fs.existsSync(filePath)) {
+      return fallback;
+    }
+
+    const fileCatalog = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return {
+      ...fallback,
+      ...fileCatalog,
+      success: true,
+      checkedAt: new Date().toISOString(),
+      characters: Array.isArray(fileCatalog.characters) ? fileCatalog.characters : fallback.characters,
+    };
+  } catch (err) {
+    console.warn("Character content catalog read failed", err.message);
+    return fallback;
+  }
+}
+
+function createCharacterContent(id, displayName, animalType, gender, starterFree, priceAmount, maxHp, attack, armor, parryChance, critChance, critDamageMultiplier) {
+  return {
+    id,
+    serverId: id,
+    displayName,
+    animalType,
+    gender,
+    isEnabled: true,
+    isStarterFree: starterFree,
+    unlockType: starterFree ? "Default" : "SoftCurrency",
+    priceCurrency: starterFree ? "None" : "OzAltin",
+    priceAmount,
+    sortOrder: getDefaultCharacterSortOrder(id),
+    stats: {
+      maxHp,
+      attack,
+      armor,
+      parryChance,
+      critChance,
+      critDamageMultiplier,
+    },
+    profileModelAddressKey: `${id}_Profile`,
+    lobbyModelAddressKey: `${id}_Lobby`,
+    battleModelAddressKey: `${id}_Battle`,
+  };
+}
+
+function getDefaultCharacterSortOrder(id) {
+  const order = {
+    Tiger_Male: 0,
+    Tiger_Female: 1,
+    Fox_Male: 2,
+    Fox_Female: 3,
+    Wolf_Male: 4,
+    Wolf_Female: 5,
+    Bear_Male: 6,
+    Bear_Female: 7,
+  };
+  return Number.isInteger(order[id]) ? order[id] : 999;
+}
+
 function mapUser(row) {
   if (!row) {
     return null;
@@ -464,6 +542,10 @@ app.post("/register", async (req, res) => {
 
 app.get("/updates/android", (req, res) => {
   res.json(getAndroidUpdateManifest());
+});
+
+app.get("/content/characters", (req, res) => {
+  res.json(getCharacterContentCatalog());
 });
 
 app.post("/login", async (req, res) => {
