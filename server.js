@@ -164,6 +164,18 @@ function getCharacterContentCatalog() {
   }
 }
 
+function getMultiplayerConfig() {
+  const port = readIntEnv("FISHNET_PORT", 7770);
+  return {
+    success: true,
+    provider: "fishnet",
+    host: process.env.FISHNET_HOST || "91.99.176.77",
+    port,
+    transport: process.env.FISHNET_TRANSPORT || "tugboat",
+    checkedAt: new Date().toISOString(),
+  };
+}
+
 function createCharacterContent(id, displayName, animalType, gender, starterFree, priceAmount, maxHp, attack, armor, parryChance, critChance, critDamageMultiplier) {
   return {
     id,
@@ -546,6 +558,10 @@ app.get("/updates/android", (req, res) => {
 
 app.get("/content/characters", (req, res) => {
   res.json(getCharacterContentCatalog());
+});
+
+app.get("/multiplayer/config", (req, res) => {
+  res.json(getMultiplayerConfig());
 });
 
 app.post("/login", async (req, res) => {
