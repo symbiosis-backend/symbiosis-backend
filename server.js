@@ -13,6 +13,7 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json());
+app.use("/downloads", express.static("downloads"));
 
 const pool = new Pool({
   user: "game",
@@ -68,6 +69,40 @@ function normalizeGender(value) {
     return gender;
   }
   return "not_specified";
+}
+
+function readIntEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function readBoolEnv(name, fallback) {
+  const value = String(process.env[name] || "").trim().toLowerCase();
+  if (value === "true" || value === "1" || value === "yes") {
+    return true;
+  }
+  if (value === "false" || value === "0" || value === "no") {
+    return false;
+  }
+  return fallback;
+}
+
+function getAndroidUpdateManifest() {
+  const latestVersionCode = readIntEnv("ANDROID_LATEST_VERSION_CODE", 1);
+  const minimumVersionCode = readIntEnv("ANDROID_MIN_VERSION_CODE", 1);
+  const updateUrl = process.env.ANDROID_UPDATE_URL || "http://91.99.176.77:8080/downloads/symbiosis-latest.apk";
+
+  return {
+    success: true,
+    platform: "android",
+    latestVersion: process.env.ANDROID_LATEST_VERSION || "1.0",
+    latestVersionCode,
+    minimumVersionCode,
+    forceUpdate: readBoolEnv("ANDROID_FORCE_UPDATE", false),
+    updateUrl,
+    releaseNotes: process.env.ANDROID_RELEASE_NOTES || "A new Symbiosis build is available.",
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 function mapUser(row) {
@@ -283,6 +318,10 @@ app.post("/register", async (req, res) => {
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
+});
+
+app.get("/updates/android", (req, res) => {
+  res.json(getAndroidUpdateManifest());
 });
 
 app.post("/login", async (req, res) => {
