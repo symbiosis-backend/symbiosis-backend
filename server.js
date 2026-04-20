@@ -2,6 +2,7 @@ console.log("AUTO DEPLOY WORKS");
 const express = require("express");
 const { Pool } = require("pg");
 const cors = require("cors");
+const crypto = require("crypto");
 
 const app = express();
 
@@ -24,6 +25,33 @@ const pool = new Pool({
 function generatePublicPlayerId() {
   const value = Math.random().toString(16).slice(2, 10).toUpperCase();
   return `MB-${value}`;
+}
+
+function generateToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
+  const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 64, "sha512").toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash, legacyPassword) {
+  if (!storedHash) {
+    return legacyPassword && String(password) === String(legacyPassword);
+  }
+
+  const [salt, hash] = String(storedHash).split(":");
+  if (!salt || !hash) {
+    return false;
+  }
+
+  const candidate = hashPassword(password, salt).split(":")[1];
+  if (candidate.length !== hash.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(Buffer.from(candidate, "hex"), Buffer.from(hash, "hex"));
 }
 
 function normalizeLanguage(value) {
@@ -58,9 +86,95 @@ function mapUser(row) {
     gender: row.gender || "not_specified",
     avatarId: row.avatar_id || 0,
     profileCompleted: !!row.profile_completed,
+    isGuest: !!row.is_guest,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+async function createSession(userId, deviceId) {
+  const token = generateToken();
+  await pool.query(
+    "INSERT INTO user_sessions (user_id, token, device_id) VALUES ($1, $2, $3)",
+    [userId, token, deviceId || null]
+  );
+
+  if (deviceId) {
+    await pool.query(
+      `
+      INSERT INTO user_devices (user_id, device_id, last_seen_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (device_id) DO UPDATE
+      SET user_id = EXCLUDED.user_id, last_seen_at = NOW()
+      `,
+      [userId, deviceId]
+    );
+  }
+
+  return token;
+}
+
+async function getUserByToken(token) {
+  if (!token) {
+    return null;
+  }
+
+  const result = await pool.query(
+    `
+    SELECT u.*
+    FROM user_sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.token = $1
+    `,
+    [token]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  await pool.query("UPDATE user_sessions SET last_seen_at = NOW() WHERE token = $1", [token]);
+  return result.rows[0];
+}
+
+async function getUserByDevice(deviceId) {
+  if (!deviceId) {
+    return null;
+  }
+
+  const result = await pool.query(
+    `
+    SELECT u.*
+    FROM user_devices d
+    JOIN users u ON u.id = d.user_id
+    WHERE d.device_id = $1
+    `,
+    [deviceId]
+  );
+
+  if (result.rows.length > 0) {
+    await pool.query("UPDATE user_devices SET last_seen_at = NOW() WHERE device_id = $1", [deviceId]);
+    return result.rows[0];
+  }
+
+  const legacy = await pool.query("SELECT * FROM users WHERE device_id = $1", [deviceId]);
+  return legacy.rows[0] || null;
+}
+
+async function attachDevice(userId, deviceId) {
+  if (!deviceId) {
+    return;
+  }
+
+  await pool.query(
+    `
+    INSERT INTO user_devices (user_id, device_id, last_seen_at)
+    VALUES ($1, $2, NOW())
+    ON CONFLICT (device_id) DO UPDATE
+    SET user_id = EXCLUDED.user_id, last_seen_at = NOW()
+    `,
+    [userId, deviceId]
+  );
 }
 
 async function ensureSchema() {
@@ -73,11 +187,35 @@ async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS gender VARCHAR(32) DEFAULT 'not_specified',
       ADD COLUMN IF NOT EXISTS avatar_id INT DEFAULT 0,
       ADD COLUMN IF NOT EXISTS profile_completed BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS is_guest BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS password_hash TEXT,
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
   `);
 
   await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_device_id_unique ON users(device_id) WHERE device_id IS NOT NULL");
   await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_public_player_id_unique ON users(public_player_id) WHERE public_player_id IS NOT NULL");
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_devices (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      device_id VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      last_seen_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(device_id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token VARCHAR(128) UNIQUE NOT NULL,
+      device_id VARCHAR(255),
+      created_at TIMESTAMP DEFAULT NOW(),
+      last_seen_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
 }
 
 ensureSchema()
@@ -105,18 +243,20 @@ app.post("/register", async (req, res) => {
   }
 
   try {
+    const passwordHash = hashPassword(password);
     const result = await pool.query(
       `
       INSERT INTO users (
-        email, password, nickname, device_id, public_player_id, language,
-        age, gender, avatar_id, profile_completed, updated_at
+        email, password, password_hash, nickname, device_id, public_player_id, language,
+        age, gender, avatar_id, profile_completed, is_guest, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, FALSE, NOW())
       RETURNING *
       `,
       [
         email,
         password,
+        passwordHash,
         nickname,
         deviceId || null,
         generatePublicPlayerId(),
@@ -127,7 +267,8 @@ app.post("/register", async (req, res) => {
       ]
     );
 
-    res.json({ success: true, user: mapUser(result.rows[0]) });
+    const token = await createSession(result.rows[0].id, deviceId);
+    res.json({ success: true, token, user: mapUser(result.rows[0]) });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -142,18 +283,39 @@ app.post("/login", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, email, nickname, created_at FROM users WHERE email = $1 AND password = $2",
-      [email, password]
+      "SELECT * FROM users WHERE email = $1",
+      [email]
     );
 
-    if (result.rows.length === 0) {
+    const user = result.rows[0];
+    if (!user || !verifyPassword(password, user.password_hash, user.password)) {
       return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
 
-    res.json({ success: true, user: result.rows[0] });
+    const token = await createSession(user.id, req.body.deviceId);
+    res.json({ success: true, token, user: mapUser(user) });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+app.post("/auth/logout", async (req, res) => {
+  const { token } = req.body;
+
+  if (token) {
+    await pool.query("DELETE FROM user_sessions WHERE token = $1", [token]);
+  }
+
+  res.json({ success: true });
+});
+
+app.post("/auth/me", async (req, res) => {
+  const user = await getUserByToken(req.body.token);
+  if (!user) {
+    return res.status(401).json({ success: false, error: "Invalid session" });
+  }
+
+  res.json({ success: true, user: mapUser(user) });
 });
 
 app.get("/users", async (req, res) => {
@@ -187,25 +349,36 @@ app.get("/profile/:id", async (req, res) => {
 });
 
 app.post("/profiles/bootstrap", async (req, res) => {
-  const { deviceId, language } = req.body;
+  const { deviceId, language, token } = req.body;
 
-  if (!deviceId) {
+  if (!deviceId && !token) {
     return res.status(400).json({ success: false, error: "Missing deviceId" });
   }
 
-  const safeDeviceId = String(deviceId).trim();
-  if (!safeDeviceId) {
+  const safeDeviceId = deviceId ? String(deviceId).trim() : "";
+  if (!safeDeviceId && !token) {
     return res.status(400).json({ success: false, error: "Invalid deviceId" });
   }
 
   try {
-    const existing = await pool.query("SELECT * FROM users WHERE device_id = $1", [safeDeviceId]);
-    if (existing.rows.length > 0) {
+    const sessionUser = await getUserByToken(token);
+    if (sessionUser) {
+      await attachDevice(sessionUser.id, safeDeviceId);
       const updated = await pool.query(
-        "UPDATE users SET language = COALESCE($2, language), updated_at = NOW() WHERE device_id = $1 RETURNING *",
-        [safeDeviceId, normalizeLanguage(language)]
+        "UPDATE users SET language = $2, updated_at = NOW() WHERE id = $1 RETURNING *",
+        [sessionUser.id, normalizeLanguage(language)]
       );
-      return res.json({ success: true, user: mapUser(updated.rows[0]) });
+      return res.json({ success: true, token, user: mapUser(updated.rows[0]) });
+    }
+
+    const existingByDevice = await getUserByDevice(safeDeviceId);
+    if (existingByDevice) {
+      const updated = await pool.query(
+        "UPDATE users SET language = $2, updated_at = NOW() WHERE id = $1 RETURNING *",
+        [existingByDevice.id, normalizeLanguage(language)]
+      );
+      const newToken = await createSession(existingByDevice.id, safeDeviceId);
+      return res.json({ success: true, token: newToken, user: mapUser(updated.rows[0]) });
     }
 
     const seed = safeDeviceId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) || Date.now().toString();
@@ -216,44 +389,77 @@ app.post("/profiles/bootstrap", async (req, res) => {
     const result = await pool.query(
       `
       INSERT INTO users (
-        email, password, nickname, device_id, public_player_id, language,
-        profile_completed, updated_at
+        email, password, password_hash, nickname, device_id, public_player_id, language,
+        profile_completed, is_guest, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, TRUE, NOW())
       RETURNING *
       `,
-      [email, password, nickname, safeDeviceId, generatePublicPlayerId(), normalizeLanguage(language)]
+      [email, password, hashPassword(password), nickname, safeDeviceId, generatePublicPlayerId(), normalizeLanguage(language)]
     );
 
-    res.json({ success: true, user: mapUser(result.rows[0]) });
+    const newToken = await createSession(result.rows[0].id, safeDeviceId);
+    res.json({ success: true, token: newToken, user: mapUser(result.rows[0]) });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 app.post("/profiles/complete", async (req, res) => {
-  const { deviceId, nickname, age, gender, avatarId, language } = req.body;
+  const { deviceId, token, email, password, nickname, age, gender, avatarId, language } = req.body;
 
-  if (!deviceId || !nickname) {
-    return res.status(400).json({ success: false, error: "Missing deviceId or nickname" });
+  if ((!deviceId && !token) || !nickname) {
+    return res.status(400).json({ success: false, error: "Missing account or nickname" });
+  }
+
+  if (!email || !password) {
+    return res.status(400).json({ success: false, error: "Email and password are required" });
+  }
+
+  if (String(password).length < 6) {
+    return res.status(400).json({ success: false, error: "Password must be at least 6 characters" });
   }
 
   try {
+    const sessionUser = await getUserByToken(token);
+    const deviceUser = await getUserByDevice(deviceId);
+    const user = sessionUser || deviceUser;
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: "Profile not found" });
+    }
+
+    const emailOwner = await pool.query(
+      "SELECT id FROM users WHERE email = $1 AND id <> $2",
+      [String(email).trim().toLowerCase(), user.id]
+    );
+
+    if (emailOwner.rows.length > 0) {
+      return res.status(409).json({ success: false, error: "Email is already registered" });
+    }
+
     const result = await pool.query(
       `
       UPDATE users
-      SET nickname = $2,
-          age = $3,
-          gender = $4,
-          avatar_id = $5,
-          language = $6,
+      SET email = $2,
+          password = $3,
+          password_hash = $4,
+          nickname = $5,
+          age = $6,
+          gender = $7,
+          avatar_id = $8,
+          language = $9,
           profile_completed = TRUE,
+          is_guest = FALSE,
           updated_at = NOW()
-      WHERE device_id = $1
+      WHERE id = $1
       RETURNING *
       `,
       [
-        String(deviceId).trim(),
+        user.id,
+        String(email).trim().toLowerCase(),
+        String(password),
+        hashPassword(password),
         String(nickname).trim(),
         Math.max(0, Number(age) || 0),
         normalizeGender(gender),
@@ -262,11 +468,10 @@ app.post("/profiles/complete", async (req, res) => {
       ]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: "Profile not found" });
-    }
+    const nextToken = token || await createSession(user.id, deviceId);
+    await attachDevice(user.id, deviceId);
 
-    res.json({ success: true, user: mapUser(result.rows[0]) });
+    res.json({ success: true, token: nextToken, user: mapUser(result.rows[0]) });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
