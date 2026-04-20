@@ -216,6 +216,17 @@ async function ensureSchema() {
       last_seen_at TIMESTAMP DEFAULT NOW()
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS global_chat_messages (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query("CREATE INDEX IF NOT EXISTS global_chat_messages_created_id_idx ON global_chat_messages(created_at DESC, id DESC)");
 }
 
 ensureSchema()
@@ -474,6 +485,96 @@ app.post("/profiles/complete", async (req, res) => {
     res.json({ success: true, token: nextToken, user: mapUser(result.rows[0]) });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.get("/chat/global", async (req, res) => {
+  const token = req.query.token;
+  const sinceId = Math.max(0, Number(req.query.sinceId) || 0);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+
+  try {
+    const user = await getUserByToken(token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        m.id,
+        m.user_id,
+        u.nickname,
+        u.public_player_id,
+        m.text,
+        m.created_at
+      FROM global_chat_messages m
+      JOIN users u ON u.id = m.user_id
+      WHERE m.id > $1
+      ORDER BY m.id DESC
+      LIMIT $2
+      `,
+      [sinceId, limit]
+    );
+
+    const messages = result.rows
+      .reverse()
+      .map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        nickname: row.nickname,
+        publicPlayerId: row.public_player_id,
+        text: row.text,
+        createdAt: row.created_at,
+      }));
+
+    res.json({ success: true, messages });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/chat/global/send", async (req, res) => {
+  const { token, text } = req.body;
+  const cleanText = String(text || "").trim().replace(/\s+/g, " ");
+
+  if (!cleanText) {
+    return res.status(400).json({ success: false, error: "Message is empty" });
+  }
+
+  if (cleanText.length > 240) {
+    return res.status(400).json({ success: false, error: "Message is too long" });
+  }
+
+  try {
+    const user = await getUserByToken(token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO global_chat_messages (user_id, text)
+      VALUES ($1, $2)
+      RETURNING id, user_id, text, created_at
+      `,
+      [user.id, cleanText]
+    );
+
+    const row = result.rows[0];
+    res.json({
+      success: true,
+      message: {
+        id: row.id,
+        userId: row.user_id,
+        nickname: user.nickname,
+        publicPlayerId: user.public_player_id,
+        text: row.text,
+        createdAt: row.created_at,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
