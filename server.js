@@ -21,6 +21,69 @@ const pool = new Pool({
   port: 5432,
 });
 
+function generatePublicPlayerId() {
+  const value = Math.random().toString(16).slice(2, 10).toUpperCase();
+  return `MB-${value}`;
+}
+
+function normalizeLanguage(value) {
+  const language = String(value || "").trim().toLowerCase();
+  if (language === "russian" || language === "english" || language === "turkish") {
+    return language;
+  }
+  return "turkish";
+}
+
+function normalizeGender(value) {
+  const gender = String(value || "").trim().toLowerCase();
+  if (gender === "male" || gender === "female" || gender === "other") {
+    return gender;
+  }
+  return "not_specified";
+}
+
+function mapUser(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    email: row.email,
+    nickname: row.nickname,
+    publicPlayerId: row.public_player_id,
+    deviceId: row.device_id,
+    language: row.language,
+    age: row.age || 0,
+    gender: row.gender || "not_specified",
+    avatarId: row.avatar_id || 0,
+    profileCompleted: !!row.profile_completed,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function ensureSchema() {
+  await pool.query(`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS device_id VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS public_player_id VARCHAR(32),
+      ADD COLUMN IF NOT EXISTS language VARCHAR(32) DEFAULT 'turkish',
+      ADD COLUMN IF NOT EXISTS age INT DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS gender VARCHAR(32) DEFAULT 'not_specified',
+      ADD COLUMN IF NOT EXISTS avatar_id INT DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS profile_completed BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()
+  `);
+
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_device_id_unique ON users(device_id) WHERE device_id IS NOT NULL");
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_public_player_id_unique ON users(public_player_id) WHERE public_player_id IS NOT NULL");
+}
+
+ensureSchema()
+  .then(() => console.log("Profile schema ready"))
+  .catch((err) => console.error("Profile schema failed", err));
+
 app.get("/", (req, res) => {
   res.send("Server is running");
 });
@@ -35,7 +98,7 @@ app.get("/test-db", async (req, res) => {
 });
 
 app.post("/register", async (req, res) => {
-  const { email, password, nickname } = req.body;
+  const { email, password, nickname, deviceId, language, age, gender, avatarId } = req.body;
 
   if (!email || !password || !nickname) {
     return res.status(400).json({ success: false, error: "Missing fields" });
@@ -43,11 +106,28 @@ app.post("/register", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "INSERT INTO users (email, password, nickname) VALUES ($1, $2, $3) RETURNING id, email, nickname, created_at",
-      [email, password, nickname]
+      `
+      INSERT INTO users (
+        email, password, nickname, device_id, public_player_id, language,
+        age, gender, avatar_id, profile_completed, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, NOW())
+      RETURNING *
+      `,
+      [
+        email,
+        password,
+        nickname,
+        deviceId || null,
+        generatePublicPlayerId(),
+        normalizeLanguage(language),
+        Math.max(0, Number(age) || 0),
+        normalizeGender(gender),
+        Math.max(0, Number(avatarId) || 0),
+      ]
     );
 
-    res.json({ success: true, user: result.rows[0] });
+    res.json({ success: true, user: mapUser(result.rows[0]) });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
@@ -103,6 +183,92 @@ app.get("/profile/:id", async (req, res) => {
     res.json({ success: true, user: result.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/profiles/bootstrap", async (req, res) => {
+  const { deviceId, language } = req.body;
+
+  if (!deviceId) {
+    return res.status(400).json({ success: false, error: "Missing deviceId" });
+  }
+
+  const safeDeviceId = String(deviceId).trim();
+  if (!safeDeviceId) {
+    return res.status(400).json({ success: false, error: "Invalid deviceId" });
+  }
+
+  try {
+    const existing = await pool.query("SELECT * FROM users WHERE device_id = $1", [safeDeviceId]);
+    if (existing.rows.length > 0) {
+      const updated = await pool.query(
+        "UPDATE users SET language = COALESCE($2, language), updated_at = NOW() WHERE device_id = $1 RETURNING *",
+        [safeDeviceId, normalizeLanguage(language)]
+      );
+      return res.json({ success: true, user: mapUser(updated.rows[0]) });
+    }
+
+    const seed = safeDeviceId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) || Date.now().toString();
+    const email = `${seed.toLowerCase()}@device.symbiosis.local`;
+    const nickname = `Player_${seed.slice(0, 8)}`;
+    const password = `device:${safeDeviceId}`;
+
+    const result = await pool.query(
+      `
+      INSERT INTO users (
+        email, password, nickname, device_id, public_player_id, language,
+        profile_completed, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW())
+      RETURNING *
+      `,
+      [email, password, nickname, safeDeviceId, generatePublicPlayerId(), normalizeLanguage(language)]
+    );
+
+    res.json({ success: true, user: mapUser(result.rows[0]) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/profiles/complete", async (req, res) => {
+  const { deviceId, nickname, age, gender, avatarId, language } = req.body;
+
+  if (!deviceId || !nickname) {
+    return res.status(400).json({ success: false, error: "Missing deviceId or nickname" });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET nickname = $2,
+          age = $3,
+          gender = $4,
+          avatar_id = $5,
+          language = $6,
+          profile_completed = TRUE,
+          updated_at = NOW()
+      WHERE device_id = $1
+      RETURNING *
+      `,
+      [
+        String(deviceId).trim(),
+        String(nickname).trim(),
+        Math.max(0, Number(age) || 0),
+        normalizeGender(gender),
+        Math.max(0, Number(avatarId) || 0),
+        normalizeLanguage(language),
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Profile not found" });
+    }
+
+    res.json({ success: true, user: mapUser(result.rows[0]) });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
