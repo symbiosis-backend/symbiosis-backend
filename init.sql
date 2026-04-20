@@ -42,3 +42,29 @@ CREATE TABLE IF NOT EXISTS global_chat_messages (
 
 CREATE INDEX IF NOT EXISTS global_chat_messages_created_id_idx
 ON global_chat_messages(created_at DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS friend_requests (
+  id SERIAL PRIMARY KEY,
+  sender_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  receiver_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS friend_requests_unique_pending
+ON friend_requests(sender_id, receiver_id)
+WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS friend_requests_receiver_status_idx
+ON friend_requests(receiver_id, status);
+
+CREATE TABLE IF NOT EXISTS friends (
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  friend_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY(user_id, friend_id)
+);
+
+CREATE INDEX IF NOT EXISTS friends_user_id_idx
+ON friends(user_id);

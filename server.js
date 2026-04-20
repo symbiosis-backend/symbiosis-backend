@@ -15,6 +15,8 @@ app.use(cors());
 app.use(express.json());
 app.use("/downloads", express.static("downloads"));
 
+const ONLINE_WINDOW_SECONDS = readIntEnv("ONLINE_WINDOW_SECONDS", 120);
+
 const pool = new Pool({
   user: "game",
   host: "postgres",
@@ -127,6 +129,47 @@ function mapUser(row) {
   };
 }
 
+function mapFriendUser(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    nickname: row.nickname,
+    publicPlayerId: row.public_player_id,
+    online: !!row.online,
+    lastSeenAt: row.last_seen_at,
+    isFriend: !!row.is_friend,
+    hasPendingOutgoing: !!row.has_pending_outgoing,
+    hasPendingIncoming: !!row.has_pending_incoming,
+  };
+}
+
+function mapIncomingRequest(row) {
+  return {
+    id: row.id,
+    senderId: row.sender_id,
+    senderNickname: row.sender_nickname,
+    senderPublicPlayerId: row.sender_public_player_id,
+    online: !!row.online,
+    lastSeenAt: row.last_seen_at,
+    createdAt: row.created_at,
+  };
+}
+
+function mapOutgoingRequest(row) {
+  return {
+    id: row.id,
+    receiverId: row.receiver_id,
+    receiverNickname: row.receiver_nickname,
+    receiverPublicPlayerId: row.receiver_public_player_id,
+    online: !!row.online,
+    lastSeenAt: row.last_seen_at,
+    createdAt: row.created_at,
+  };
+}
+
 async function createSession(userId, deviceId) {
   const token = generateToken();
   await pool.query(
@@ -212,6 +255,42 @@ async function attachDevice(userId, deviceId) {
   );
 }
 
+async function acceptFriendRequest(requestId, receiverId) {
+  const params = receiverId ? [requestId, receiverId] : [requestId];
+  const receiverClause = receiverId ? "AND receiver_id = $2" : "";
+  const requestResult = await pool.query(
+    `
+    SELECT *
+    FROM friend_requests
+    WHERE id = $1 AND status = 'pending' ${receiverClause}
+    `,
+    params
+  );
+
+  if (requestResult.rows.length === 0) {
+    return null;
+  }
+
+  const request = requestResult.rows[0];
+
+  await pool.query(
+    "UPDATE friend_requests SET status = 'accepted', updated_at = NOW() WHERE id = $1",
+    [requestId]
+  );
+
+  await pool.query(
+    "INSERT INTO friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    [request.sender_id, request.receiver_id]
+  );
+
+  await pool.query(
+    "INSERT INTO friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+    [request.receiver_id, request.sender_id]
+  );
+
+  return request;
+}
+
 async function ensureSchema() {
   await pool.query(`
     ALTER TABLE users
@@ -261,7 +340,30 @@ async function ensureSchema() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS friend_requests (
+      id SERIAL PRIMARY KEY,
+      sender_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      receiver_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      status VARCHAR(20) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS friends (
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      friend_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      PRIMARY KEY(user_id, friend_id)
+    )
+  `);
+
   await pool.query("CREATE INDEX IF NOT EXISTS global_chat_messages_created_id_idx ON global_chat_messages(created_at DESC, id DESC)");
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS friend_requests_unique_pending ON friend_requests(sender_id, receiver_id) WHERE status = 'pending'");
+  await pool.query("CREATE INDEX IF NOT EXISTS friend_requests_receiver_status_idx ON friend_requests(receiver_id, status)");
+  await pool.query("CREATE INDEX IF NOT EXISTS friends_user_id_idx ON friends(user_id)");
 }
 
 ensureSchema()
@@ -617,6 +719,257 @@ app.post("/chat/global/send", async (req, res) => {
   }
 });
 
+app.post("/presence/heartbeat", async (req, res) => {
+  try {
+    const user = await getUserByToken(req.body.token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    res.json({ success: true, userId: user.id, checkedAt: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get("/friends/search", async (req, res) => {
+  const token = req.query.token;
+  const nickname = String(req.query.nickname || "").trim();
+
+  if (nickname.length < 2) {
+    return res.status(400).json({ success: false, error: "Enter at least 2 characters" });
+  }
+
+  try {
+    const user = await getUserByToken(token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.nickname,
+        u.public_player_id,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) AS last_seen_at,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) >= NOW() - ($3::int * INTERVAL '1 second') AS online,
+        EXISTS(SELECT 1 FROM friends f WHERE f.user_id = $1 AND f.friend_id = u.id) AS is_friend,
+        EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.sender_id = $1 AND fr.receiver_id = u.id AND fr.status = 'pending') AS has_pending_outgoing,
+        EXISTS(SELECT 1 FROM friend_requests fr WHERE fr.sender_id = u.id AND fr.receiver_id = $1 AND fr.status = 'pending') AS has_pending_incoming
+      FROM users u
+      WHERE u.id <> $1 AND u.nickname ILIKE $2
+      ORDER BY
+        CASE WHEN LOWER(u.nickname) = LOWER($4) THEN 0 ELSE 1 END,
+        u.nickname ASC
+      LIMIT 10
+      `,
+      [user.id, `%${nickname}%`, ONLINE_WINDOW_SECONDS, nickname]
+    );
+
+    res.json({ success: true, users: result.rows.map(mapFriendUser) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/friends/request-by-nickname", async (req, res) => {
+  const { token, nickname } = req.body;
+  const cleanNickname = String(nickname || "").trim();
+
+  if (!cleanNickname) {
+    return res.status(400).json({ success: false, error: "Missing nickname" });
+  }
+
+  try {
+    const user = await getUserByToken(token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const targetResult = await pool.query(
+      "SELECT * FROM users WHERE LOWER(nickname) = LOWER($1) LIMIT 1",
+      [cleanNickname]
+    );
+
+    const target = targetResult.rows[0];
+    if (!target) {
+      return res.status(404).json({ success: false, error: "Player not found" });
+    }
+
+    if (target.id === user.id) {
+      return res.status(400).json({ success: false, error: "You cannot add yourself" });
+    }
+
+    const friendship = await pool.query(
+      "SELECT 1 FROM friends WHERE user_id = $1 AND friend_id = $2",
+      [user.id, target.id]
+    );
+
+    if (friendship.rows.length > 0) {
+      return res.json({ success: true, message: "Already friends", accepted: true });
+    }
+
+    const incoming = await pool.query(
+      `
+      SELECT id
+      FROM friend_requests
+      WHERE sender_id = $1 AND receiver_id = $2 AND status = 'pending'
+      ORDER BY id ASC
+      LIMIT 1
+      `,
+      [target.id, user.id]
+    );
+
+    if (incoming.rows.length > 0) {
+      await acceptFriendRequest(incoming.rows[0].id, user.id);
+      return res.json({ success: true, message: "Friend request accepted", accepted: true });
+    }
+
+    await pool.query(
+      `
+      INSERT INTO friend_requests (sender_id, receiver_id, status, updated_at)
+      VALUES ($1, $2, 'pending', NOW())
+      ON CONFLICT DO NOTHING
+      `,
+      [user.id, target.id]
+    );
+
+    res.json({ success: true, message: "Friend request sent", accepted: false });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/friends/decline", async (req, res) => {
+  const { token, requestId } = req.body;
+
+  if (!requestId) {
+    return res.status(400).json({ success: false, error: "Missing requestId" });
+  }
+
+  try {
+    const user = await getUserByToken(token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE friend_requests
+      SET status = 'declined', updated_at = NOW()
+      WHERE id = $1 AND receiver_id = $2 AND status = 'pending'
+      RETURNING id
+      `,
+      [requestId, user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Request not found" });
+    }
+
+    res.json({ success: true, message: "Friend request declined" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get("/friends/list", async (req, res) => {
+  try {
+    const user = await getUserByToken(req.query.token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const friendsResult = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.nickname,
+        u.public_player_id,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) AS last_seen_at,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) >= NOW() - ($2::int * INTERVAL '1 second') AS online,
+        TRUE AS is_friend
+      FROM friends f
+      JOIN users u ON u.id = f.friend_id
+      WHERE f.user_id = $1
+      ORDER BY online DESC, u.nickname ASC
+      `,
+      [user.id, ONLINE_WINDOW_SECONDS]
+    );
+
+    const incomingResult = await pool.query(
+      `
+      SELECT
+        fr.id,
+        fr.sender_id,
+        u.nickname AS sender_nickname,
+        u.public_player_id AS sender_public_player_id,
+        fr.created_at,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) AS last_seen_at,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) >= NOW() - ($2::int * INTERVAL '1 second') AS online
+      FROM friend_requests fr
+      JOIN users u ON u.id = fr.sender_id
+      WHERE fr.receiver_id = $1 AND fr.status = 'pending'
+      ORDER BY fr.id ASC
+      `,
+      [user.id, ONLINE_WINDOW_SECONDS]
+    );
+
+    const outgoingResult = await pool.query(
+      `
+      SELECT
+        fr.id,
+        fr.receiver_id,
+        u.nickname AS receiver_nickname,
+        u.public_player_id AS receiver_public_player_id,
+        fr.created_at,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) AS last_seen_at,
+        GREATEST(
+          COALESCE((SELECT MAX(last_seen_at) FROM user_sessions WHERE user_id = u.id), 'epoch'::timestamp),
+          COALESCE((SELECT MAX(last_seen_at) FROM user_devices WHERE user_id = u.id), 'epoch'::timestamp)
+        ) >= NOW() - ($2::int * INTERVAL '1 second') AS online
+      FROM friend_requests fr
+      JOIN users u ON u.id = fr.receiver_id
+      WHERE fr.sender_id = $1 AND fr.status = 'pending'
+      ORDER BY fr.id ASC
+      `,
+      [user.id, ONLINE_WINDOW_SECONDS]
+    );
+
+    res.json({
+      success: true,
+      friends: friendsResult.rows.map(mapFriendUser),
+      incomingRequests: incomingResult.rows.map(mapIncomingRequest),
+      outgoingRequests: outgoingResult.rows.map(mapOutgoingRequest),
+      onlineWindowSeconds: ONLINE_WINDOW_SECONDS,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // SEND FRIEND REQUEST
 app.post("/friends/request", async (req, res) => {
   const { senderId, receiverId } = req.body;
@@ -643,38 +996,22 @@ app.post("/friends/request", async (req, res) => {
 
 // ACCEPT FRIEND REQUEST
 app.post("/friends/accept", async (req, res) => {
-  const { requestId } = req.body;
+  const { token, requestId } = req.body;
 
   if (!requestId) {
     return res.status(400).json({ success: false, error: "Missing requestId" });
   }
 
   try {
-    const requestResult = await pool.query(
-      "SELECT * FROM friend_requests WHERE id = $1 AND status = 'pending'",
-      [requestId]
-    );
-
-    if (requestResult.rows.length === 0) {
-      return res.status(404).json({ success: false, error: "Request not found" });
+    const user = token ? await getUserByToken(token) : null;
+    if (token && !user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
     }
 
-    const request = requestResult.rows[0];
-
-    await pool.query(
-      "UPDATE friend_requests SET status = 'accepted' WHERE id = $1",
-      [requestId]
-    );
-
-    await pool.query(
-      "INSERT INTO friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-      [request.sender_id, request.receiver_id]
-    );
-
-    await pool.query(
-      "INSERT INTO friends (user_id, friend_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
-      [request.receiver_id, request.sender_id]
-    );
+    const request = await acceptFriendRequest(requestId, user ? user.id : null);
+    if (!request) {
+      return res.status(404).json({ success: false, error: "Request not found" });
+    }
 
     res.json({ success: true, message: "Friend request accepted" });
   } catch (err) {
