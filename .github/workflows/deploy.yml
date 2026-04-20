@@ -2,7 +2,8 @@ name: Deploy Backend
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   deploy:
@@ -16,4 +17,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            /home/deploy/deploy_backend.sh
+            echo "=== CONNECTED TO SERVER ==="
+            whoami
+            echo "=== START DEPLOY ==="
+            bash /home/deploy/deploy_backend.sh
+            echo "=== DEPLOY FINISHED ==="
