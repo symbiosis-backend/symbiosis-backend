@@ -3,6 +3,8 @@ const express = require("express");
 const { Pool } = require("pg");
 const cors = require("cors");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 
@@ -90,11 +92,11 @@ function readBoolEnv(name, fallback) {
 }
 
 function getAndroidUpdateManifest() {
+  const filePath = path.join(__dirname, "downloads", "android-update.json");
   const latestVersionCode = readIntEnv("ANDROID_LATEST_VERSION_CODE", 1);
   const minimumVersionCode = readIntEnv("ANDROID_MIN_VERSION_CODE", 1);
   const updateUrl = process.env.ANDROID_UPDATE_URL || "http://91.99.176.77:8080/downloads/symbiosis-latest.apk";
-
-  return {
+  const fallback = {
     success: true,
     platform: "android",
     latestVersion: process.env.ANDROID_LATEST_VERSION || "1.0",
@@ -105,6 +107,24 @@ function getAndroidUpdateManifest() {
     releaseNotes: process.env.ANDROID_RELEASE_NOTES || "A new Symbiosis build is available.",
     checkedAt: new Date().toISOString(),
   };
+
+  try {
+    if (!fs.existsSync(filePath)) {
+      return fallback;
+    }
+
+    const fileManifest = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return {
+      ...fallback,
+      ...fileManifest,
+      success: true,
+      platform: "android",
+      checkedAt: new Date().toISOString(),
+    };
+  } catch (err) {
+    console.warn("Android update manifest read failed", err.message);
+    return fallback;
+  }
 }
 
 function mapUser(row) {
