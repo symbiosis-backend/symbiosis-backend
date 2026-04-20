@@ -1,0 +1,26 @@
+name: Add Unity CI SSH Key
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  add-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add Unity CI public key to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDWetuq3AgwX3z7mIQEOcRgdnBdXcx7q+hKDstGGd2Ir github-actions-symbiosis-unity'
+            touch ~/.ssh/authorized_keys
+            chmod 600 ~/.ssh/authorized_keys
+            grep -qxF "$KEY" ~/.ssh/authorized_keys || echo "$KEY" >> ~/.ssh/authorized_keys
+            echo "Unity CI key is installed."
