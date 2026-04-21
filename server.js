@@ -315,7 +315,24 @@ function mapProfileSlot(row) {
     avatarId: row.avatar_id || 0,
     profileCompleted: !!row.profile_completed,
     isGuest: !!row.is_guest,
+    occupied: true,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapEmptyProfileSlot(slotIndex) {
+  return {
+    id: 0,
+    slotIndex,
+    nickname: "",
+    publicPlayerId: "",
+    age: 0,
+    gender: "not_specified",
+    avatarId: 0,
+    profileCompleted: false,
+    isGuest: false,
+    occupied: false,
+    updatedAt: null,
   };
 }
 
@@ -414,6 +431,18 @@ async function getAccountSlots(accountId) {
   );
 
   return result.rows.map(mapProfileSlot);
+}
+
+async function getAccountSlotOverview(accountId) {
+  const occupied = await getAccountSlots(accountId);
+  const slots = [mapEmptyProfileSlot(1), mapEmptyProfileSlot(2), mapEmptyProfileSlot(3)];
+
+  for (const slot of occupied) {
+    const index = getSlotIndex(slot.slotIndex) - 1;
+    slots[index] = { ...slot, occupied: true };
+  }
+
+  return slots;
 }
 
 async function getUserByToken(token) {
@@ -857,7 +886,7 @@ app.post("/login", async (req, res) => {
         token,
         user: mapUser({ ...user, account_email: account.email, dynasty_name: account.dynasty_name, dynasty_id: account.dynasty_id }),
         account: mapAccount(account),
-        profiles: await getAccountSlots(account.id),
+        profiles: await getAccountSlotOverview(account.id),
       });
     }
 
@@ -873,6 +902,35 @@ app.post("/login", async (req, res) => {
 
     const token = await createSession(user.id, req.body.deviceId);
     res.json({ success: true, token, user: mapUser(user) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/account/slots", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ success: false, error: "Missing fields" });
+  }
+
+  try {
+    const cleanEmail = String(email).trim().toLowerCase();
+    const accountResult = await pool.query(
+      "SELECT * FROM accounts WHERE email = $1",
+      [cleanEmail]
+    );
+
+    const account = accountResult.rows[0];
+    if (!account || !verifyPassword(password, account.password_hash, null)) {
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
+    }
+
+    res.json({
+      success: true,
+      account: mapAccount(account),
+      profiles: await getAccountSlotOverview(account.id),
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1145,7 +1203,7 @@ async function registerDynastyProfile(req, res) {
       token: nextToken,
       user: mapUser({ ...targetUser, account_email: account.email, dynasty_name: account.dynasty_name, dynasty_id: account.dynasty_id }),
       account: mapAccount(account),
-      profiles: await getAccountSlots(account.id),
+      profiles: await getAccountSlotOverview(account.id),
     });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
