@@ -116,6 +116,10 @@ function getSlotIndex(value) {
   return Math.min(3, Math.max(1, slot));
 }
 
+function normalizeDeviceId(value) {
+  return String(value || "").trim();
+}
+
 function getSlotEmail(accountId, slotIndex) {
   return `account-${accountId}-slot-${slotIndex}@slot.symbiosis.local`;
 }
@@ -316,6 +320,8 @@ function mapProfileSlot(row) {
     profileCompleted: !!row.profile_completed,
     isGuest: !!row.is_guest,
     occupied: true,
+    inUseByOtherDevice: !!row.in_use_by_other_device,
+    lastActiveAt: row.last_active_at || null,
     updatedAt: row.updated_at,
   };
 }
@@ -332,6 +338,8 @@ function mapEmptyProfileSlot(slotIndex) {
     profileCompleted: false,
     isGuest: false,
     occupied: false,
+    inUseByOtherDevice: false,
+    lastActiveAt: null,
     updatedAt: null,
   };
 }
@@ -414,27 +422,40 @@ async function createSession(userId, deviceId) {
   return token;
 }
 
-async function getAccountSlots(accountId) {
+async function getAccountSlots(accountId, deviceId = "") {
   if (!accountId) {
     return [];
   }
 
+  const cleanDeviceId = normalizeDeviceId(deviceId);
   const result = await pool.query(
     `
     SELECT id, slot_index, nickname, public_player_id, age, gender, avatar_id,
-           profile_completed, is_guest, updated_at
+           profile_completed, is_guest, updated_at,
+           EXISTS(
+             SELECT 1
+             FROM user_sessions s
+             WHERE s.user_id = users.id
+               AND s.last_seen_at >= NOW() - ($2::int * INTERVAL '1 second')
+               AND COALESCE(s.device_id, '') <> $3
+           ) AS in_use_by_other_device,
+           (
+             SELECT MAX(s.last_seen_at)
+             FROM user_sessions s
+             WHERE s.user_id = users.id
+           ) AS last_active_at
     FROM users
     WHERE account_id = $1 AND slot_index BETWEEN 1 AND 3
     ORDER BY slot_index ASC
     `,
-    [accountId]
+    [accountId, ONLINE_WINDOW_SECONDS, cleanDeviceId]
   );
 
   return result.rows.map(mapProfileSlot);
 }
 
-async function getAccountSlotOverview(accountId) {
-  const occupied = await getAccountSlots(accountId);
+async function getAccountSlotOverview(accountId, deviceId = "") {
+  const occupied = await getAccountSlots(accountId, deviceId);
   const slots = [mapEmptyProfileSlot(1), mapEmptyProfileSlot(2), mapEmptyProfileSlot(3)];
 
   for (const slot of occupied) {
@@ -443,6 +464,28 @@ async function getAccountSlotOverview(accountId) {
   }
 
   return slots;
+}
+
+async function isProfileInUseByOtherDevice(userId, deviceId = "") {
+  if (!userId) {
+    return false;
+  }
+
+  const cleanDeviceId = normalizeDeviceId(deviceId);
+  const result = await pool.query(
+    `
+    SELECT EXISTS(
+      SELECT 1
+      FROM user_sessions
+      WHERE user_id = $1
+        AND last_seen_at >= NOW() - ($2::int * INTERVAL '1 second')
+        AND COALESCE(device_id, '') <> $3
+    ) AS in_use
+    `,
+    [userId, ONLINE_WINDOW_SECONDS, cleanDeviceId]
+  );
+
+  return !!(result.rows[0] && result.rows[0].in_use);
 }
 
 async function getUserByToken(token) {
@@ -863,21 +906,23 @@ app.post("/login", async (req, res) => {
       }
 
       const requestedSlot = getSlotIndex(slotIndex);
-      let slotResult = await pool.query(
+      const slotResult = await pool.query(
         "SELECT * FROM users WHERE account_id = $1 AND slot_index = $2 AND profile_completed = TRUE",
         [account.id, requestedSlot]
       );
 
-      if (slotResult.rows.length === 0) {
-        slotResult = await pool.query(
-          "SELECT * FROM users WHERE account_id = $1 AND profile_completed = TRUE ORDER BY slot_index ASC LIMIT 1",
-          [account.id]
-        );
-      }
-
       const user = slotResult.rows[0];
       if (!user) {
-        return res.status(404).json({ success: false, error: "No profile slots found for this account" });
+        return res.status(404).json({ success: false, error: "Profile slot not found" });
+      }
+
+      if (await isProfileInUseByOtherDevice(user.id, req.body.deviceId)) {
+        return res.status(409).json({
+          success: false,
+          error: "Profile is already in use on another device",
+          account: mapAccount(account),
+          profiles: await getAccountSlotOverview(account.id, req.body.deviceId),
+        });
       }
 
       const token = await createSession(user.id, req.body.deviceId);
@@ -886,7 +931,7 @@ app.post("/login", async (req, res) => {
         token,
         user: mapUser({ ...user, account_email: account.email, dynasty_name: account.dynasty_name, dynasty_id: account.dynasty_id }),
         account: mapAccount(account),
-        profiles: await getAccountSlotOverview(account.id),
+        profiles: await getAccountSlotOverview(account.id, req.body.deviceId),
       });
     }
 
@@ -908,7 +953,7 @@ app.post("/login", async (req, res) => {
 });
 
 app.post("/account/slots", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, deviceId } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ success: false, error: "Missing fields" });
@@ -929,7 +974,7 @@ app.post("/account/slots", async (req, res) => {
     res.json({
       success: true,
       account: mapAccount(account),
-      profiles: await getAccountSlotOverview(account.id),
+      profiles: await getAccountSlotOverview(account.id, deviceId),
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1203,7 +1248,7 @@ async function registerDynastyProfile(req, res) {
       token: nextToken,
       user: mapUser({ ...targetUser, account_email: account.email, dynasty_name: account.dynasty_name, dynasty_id: account.dynasty_id }),
       account: mapAccount(account),
-      profiles: await getAccountSlotOverview(account.id),
+      profiles: await getAccountSlotOverview(account.id, deviceId),
     });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
