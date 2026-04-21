@@ -18,6 +18,16 @@ app.use(express.json());
 app.use("/downloads", express.static("downloads"));
 
 const ONLINE_WINDOW_SECONDS = readIntEnv("ONLINE_WINDOW_SECONDS", 120);
+const CHAT_CHANNEL_GLOBAL = "global";
+const CHAT_CHANNEL_MAHJONG = "mahjong";
+const CHAT_CHANNELS = new Set([CHAT_CHANNEL_GLOBAL, CHAT_CHANNEL_MAHJONG]);
+const PROFILE_RESET_ID = process.env.PROFILE_RESET_ID || "profiles_reset_20260422_seed_test_v1";
+const SEED_TEST_EMAIL = (process.env.SEED_TEST_EMAIL || "test@symbiosis.local").trim().toLowerCase();
+const SEED_TEST_PASSWORD = process.env.SEED_TEST_PASSWORD || "test123456";
+const SEED_TEST_DYNASTY_NAME = process.env.SEED_TEST_DYNASTY_NAME || "Test Dynasty";
+const SEED_TEST_DYNASTY_ID = process.env.SEED_TEST_DYNASTY_ID || "DY-TEST-000001";
+const SEED_TEST_NICKNAME = process.env.SEED_TEST_NICKNAME || "TestPlayer";
+const SEED_TEST_PUBLIC_PLAYER_ID = process.env.SEED_TEST_PUBLIC_PLAYER_ID || "MB-TEST0001";
 
 const pool = new Pool({
   user: "game",
@@ -73,6 +83,53 @@ function normalizeGender(value) {
     return gender;
   }
   return "not_specified";
+}
+
+function normalizeDynastyName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 48);
+}
+
+function normalizeLookup(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeChatChannel(value) {
+  const channel = String(value || CHAT_CHANNEL_GLOBAL).trim().toLowerCase();
+  if (channel === "madonna") {
+    return CHAT_CHANNEL_MAHJONG;
+  }
+
+  return CHAT_CHANNELS.has(channel) ? channel : CHAT_CHANNEL_GLOBAL;
+}
+
+function generateDynastyId(dynastyName) {
+  const source = normalizeDynastyName(dynastyName)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 6) || "DYN";
+  const suffix = crypto.randomBytes(3).toString("hex").toUpperCase();
+  return `DY-${source}-${suffix}`;
+}
+
+function getSlotIndex(value) {
+  const slot = Math.floor(Number(value) || 1);
+  return Math.min(3, Math.max(1, slot));
+}
+
+function getSlotEmail(accountId, slotIndex) {
+  return `account-${accountId}-slot-${slotIndex}@slot.symbiosis.local`;
+}
+
+function createGuestIdentity(deviceId) {
+  const seed = String(deviceId || "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 12) || Date.now().toString(36);
+  const suffix = crypto.randomBytes(4).toString("hex");
+
+  return {
+    email: `${seed.toLowerCase()}-${suffix}@device.symbiosis.local`,
+    nickname: `Player_${seed.slice(0, 8)}_${suffix.slice(0, 4)}`,
+  };
 }
 
 function readIntEnv(name, fallback) {
@@ -224,16 +281,54 @@ function mapUser(row) {
 
   return {
     id: row.id,
-    email: row.email,
+    email: row.account_email || row.email,
     nickname: row.nickname,
     publicPlayerId: row.public_player_id,
     deviceId: row.device_id,
+    accountId: row.account_id || 0,
+    dynastyName: row.dynasty_name || "",
+    dynastyId: row.dynasty_id || "",
+    slotIndex: row.slot_index || 1,
     language: row.language,
     age: row.age || 0,
     gender: row.gender || "not_specified",
     avatarId: row.avatar_id || 0,
     profileCompleted: !!row.profile_completed,
     isGuest: !!row.is_guest,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapProfileSlot(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    slotIndex: row.slot_index || 1,
+    nickname: row.nickname,
+    publicPlayerId: row.public_player_id,
+    age: row.age || 0,
+    gender: row.gender || "not_specified",
+    avatarId: row.avatar_id || 0,
+    profileCompleted: !!row.profile_completed,
+    isGuest: !!row.is_guest,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapAccount(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    dynastyName: row.dynasty_name,
+    dynastyId: row.dynasty_id,
+    email: row.email,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -302,6 +397,25 @@ async function createSession(userId, deviceId) {
   return token;
 }
 
+async function getAccountSlots(accountId) {
+  if (!accountId) {
+    return [];
+  }
+
+  const result = await pool.query(
+    `
+    SELECT id, slot_index, nickname, public_player_id, age, gender, avatar_id,
+           profile_completed, is_guest, updated_at
+    FROM users
+    WHERE account_id = $1 AND slot_index BETWEEN 1 AND 3
+    ORDER BY slot_index ASC
+    `,
+    [accountId]
+  );
+
+  return result.rows.map(mapProfileSlot);
+}
+
 async function getUserByToken(token) {
   if (!token) {
     return null;
@@ -309,9 +423,10 @@ async function getUserByToken(token) {
 
   const result = await pool.query(
     `
-    SELECT u.*
+    SELECT u.*, a.email AS account_email, a.dynasty_name, a.dynasty_id
     FROM user_sessions s
     JOIN users u ON u.id = s.user_id
+    LEFT JOIN accounts a ON a.id = u.account_id
     WHERE s.token = $1
     `,
     [token]
@@ -332,9 +447,10 @@ async function getUserByDevice(deviceId) {
 
   const result = await pool.query(
     `
-    SELECT u.*
+    SELECT u.*, a.email AS account_email, a.dynasty_name, a.dynasty_id
     FROM user_devices d
     JOIN users u ON u.id = d.user_id
+    LEFT JOIN accounts a ON a.id = u.account_id
     WHERE d.device_id = $1
     `,
     [deviceId]
@@ -401,9 +517,72 @@ async function acceptFriendRequest(requestId, receiverId) {
   return request;
 }
 
+async function findFriendTargetByNicknameOrId(userId, value) {
+  const cleanValue = normalizeLookup(value);
+  if (!cleanValue) {
+    return null;
+  }
+
+  const exactResult = await pool.query(
+    `
+    SELECT *
+    FROM users
+    WHERE id <> $1
+      AND (
+        LOWER(nickname) = LOWER($2)
+        OR LOWER(COALESCE(public_player_id, '')) = LOWER($2)
+      )
+    ORDER BY
+      CASE WHEN LOWER(COALESCE(public_player_id, '')) = LOWER($2) THEN 0 ELSE 1 END,
+      updated_at DESC NULLS LAST,
+      id DESC
+    LIMIT 1
+    `,
+    [userId, cleanValue]
+  );
+
+  if (exactResult.rows.length > 0) {
+    return exactResult.rows[0];
+  }
+
+  const fuzzyResult = await pool.query(
+    `
+    SELECT *
+    FROM users
+    WHERE id <> $1 AND nickname ILIKE $2
+    ORDER BY
+      CASE WHEN nickname ILIKE $3 THEN 0 ELSE 1 END,
+      updated_at DESC NULLS LAST,
+      nickname ASC
+    LIMIT 2
+    `,
+    [userId, `%${cleanValue}%`, `${cleanValue}%`]
+  );
+
+  if (fuzzyResult.rows.length === 1) {
+    return fuzzyResult.rows[0];
+  }
+
+  return null;
+}
+
 async function ensureSchema() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS accounts (
+      id SERIAL PRIMARY KEY,
+      dynasty_name VARCHAR(64) NOT NULL,
+      dynasty_id VARCHAR(32) UNIQUE NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
     ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS account_id INT REFERENCES accounts(id) ON DELETE CASCADE,
+      ADD COLUMN IF NOT EXISTS slot_index INT DEFAULT 1,
       ADD COLUMN IF NOT EXISTS device_id VARCHAR(255),
       ADD COLUMN IF NOT EXISTS public_player_id VARCHAR(32),
       ADD COLUMN IF NOT EXISTS language VARCHAR(32) DEFAULT 'turkish',
@@ -418,6 +597,11 @@ async function ensureSchema() {
 
   await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_device_id_unique ON users(device_id) WHERE device_id IS NOT NULL");
   await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_public_player_id_unique ON users(public_player_id) WHERE public_player_id IS NOT NULL");
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS users_account_slot_unique ON users(account_id, slot_index) WHERE account_id IS NOT NULL AND slot_index BETWEEN 1 AND 3");
+  await pool.query("CREATE INDEX IF NOT EXISTS users_account_id_idx ON users(account_id)");
+  await pool.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_nickname_key");
+  await pool.query("DROP INDEX IF EXISTS users_nickname_key");
+  await pool.query("CREATE INDEX IF NOT EXISTS users_nickname_idx ON users(nickname)");
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_devices (
@@ -445,10 +629,13 @@ async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS global_chat_messages (
       id SERIAL PRIMARY KEY,
       user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      channel VARCHAR(32) NOT NULL DEFAULT 'global',
       text TEXT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )
   `);
+
+  await pool.query("ALTER TABLE global_chat_messages ADD COLUMN IF NOT EXISTS channel VARCHAR(32) NOT NULL DEFAULT 'global'");
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS friend_requests (
@@ -471,9 +658,108 @@ async function ensureSchema() {
   `);
 
   await pool.query("CREATE INDEX IF NOT EXISTS global_chat_messages_created_id_idx ON global_chat_messages(created_at DESC, id DESC)");
+  await pool.query("CREATE INDEX IF NOT EXISTS global_chat_messages_channel_id_idx ON global_chat_messages(channel, id DESC)");
   await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS friend_requests_unique_pending ON friend_requests(sender_id, receiver_id) WHERE status = 'pending'");
   await pool.query("CREATE INDEX IF NOT EXISTS friend_requests_receiver_status_idx ON friend_requests(receiver_id, status)");
   await pool.query("CREATE INDEX IF NOT EXISTS friends_user_id_idx ON friends(user_id)");
+
+  await applyProfileResetIfNeeded();
+}
+
+async function applyProfileResetIfNeeded() {
+  if (!PROFILE_RESET_ID) {
+    return;
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_maintenance_state (
+      key VARCHAR(80) PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  const resetState = await pool.query(
+    "SELECT value FROM app_maintenance_state WHERE key = 'profile_reset_id'"
+  );
+
+  if (resetState.rows.length > 0 && resetState.rows[0].value === PROFILE_RESET_ID) {
+    return;
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(`
+      TRUNCATE TABLE
+        friend_requests,
+        friends,
+        global_chat_messages,
+        user_sessions,
+        user_devices,
+        users,
+        accounts
+      RESTART IDENTITY CASCADE
+    `);
+    await seedStartTestAccount(client);
+    await client.query(
+      `
+      INSERT INTO app_maintenance_state (key, value, updated_at)
+      VALUES ('profile_reset_id', $1, NOW())
+      ON CONFLICT (key) DO UPDATE
+        SET value = EXCLUDED.value,
+            updated_at = NOW()
+      `,
+      [PROFILE_RESET_ID]
+    );
+    await client.query("COMMIT");
+    console.log(`Applied profile reset ${PROFILE_RESET_ID}`);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedStartTestAccount(client) {
+  const accountResult = await client.query(
+    `
+    INSERT INTO accounts (dynasty_name, dynasty_id, email, password_hash, updated_at)
+    VALUES ($1, $2, $3, $4, NOW())
+    RETURNING *
+    `,
+    [
+      normalizeDynastyName(SEED_TEST_DYNASTY_NAME),
+      SEED_TEST_DYNASTY_ID,
+      SEED_TEST_EMAIL,
+      hashPassword(SEED_TEST_PASSWORD),
+    ]
+  );
+
+  const account = accountResult.rows[0];
+  const slotEmail = getSlotEmail(account.id, 1);
+
+  await client.query(
+    `
+    INSERT INTO users (
+      account_id, slot_index, email, password, password_hash, nickname,
+      public_player_id, language, age, gender, avatar_id,
+      profile_completed, is_guest, updated_at
+    )
+    VALUES ($1, 1, $2, $3, $4, $5, $6, 'turkish', 18, 'not_specified', 0, TRUE, FALSE, NOW())
+    `,
+    [
+      account.id,
+      slotEmail,
+      SEED_TEST_PASSWORD,
+      hashPassword(SEED_TEST_PASSWORD),
+      SEED_TEST_NICKNAME,
+      SEED_TEST_PUBLIC_PLAYER_ID,
+    ]
+  );
+
+  console.log(`Seeded start test account ${SEED_TEST_EMAIL}`);
 }
 
 ensureSchema()
@@ -513,44 +799,7 @@ app.get("/test-db", async (req, res) => {
   }
 });
 
-app.post("/register", async (req, res) => {
-  const { email, password, nickname, deviceId, language, age, gender, avatarId } = req.body;
-
-  if (!email || !password || !nickname) {
-    return res.status(400).json({ success: false, error: "Missing fields" });
-  }
-
-  try {
-    const passwordHash = hashPassword(password);
-    const result = await pool.query(
-      `
-      INSERT INTO users (
-        email, password, password_hash, nickname, device_id, public_player_id, language,
-        age, gender, avatar_id, profile_completed, is_guest, updated_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, FALSE, NOW())
-      RETURNING *
-      `,
-      [
-        email,
-        password,
-        passwordHash,
-        nickname,
-        deviceId || null,
-        generatePublicPlayerId(),
-        normalizeLanguage(language),
-        Math.max(0, Number(age) || 0),
-        normalizeGender(gender),
-        Math.max(0, Number(avatarId) || 0),
-      ]
-    );
-
-    const token = await createSession(result.rows[0].id, deviceId);
-    res.json({ success: true, token, user: mapUser(result.rows[0]) });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
-  }
-});
+app.post("/register", registerDynastyProfile);
 
 app.get("/updates/android", (req, res) => {
   res.json(getAndroidUpdateManifest());
@@ -565,16 +814,56 @@ app.get("/multiplayer/config", (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, slotIndex } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ success: false, error: "Missing fields" });
   }
 
   try {
+    const cleanEmail = String(email).trim().toLowerCase();
+    const accountResult = await pool.query(
+      "SELECT * FROM accounts WHERE email = $1",
+      [cleanEmail]
+    );
+
+    const account = accountResult.rows[0];
+    if (account) {
+      if (!verifyPassword(password, account.password_hash, null)) {
+        return res.status(401).json({ success: false, error: "Invalid credentials" });
+      }
+
+      const requestedSlot = getSlotIndex(slotIndex);
+      let slotResult = await pool.query(
+        "SELECT * FROM users WHERE account_id = $1 AND slot_index = $2 AND profile_completed = TRUE",
+        [account.id, requestedSlot]
+      );
+
+      if (slotResult.rows.length === 0) {
+        slotResult = await pool.query(
+          "SELECT * FROM users WHERE account_id = $1 AND profile_completed = TRUE ORDER BY slot_index ASC LIMIT 1",
+          [account.id]
+        );
+      }
+
+      const user = slotResult.rows[0];
+      if (!user) {
+        return res.status(404).json({ success: false, error: "No profile slots found for this account" });
+      }
+
+      const token = await createSession(user.id, req.body.deviceId);
+      return res.json({
+        success: true,
+        token,
+        user: mapUser({ ...user, account_email: account.email, dynasty_name: account.dynasty_name, dynasty_id: account.dynasty_id }),
+        account: mapAccount(account),
+        profiles: await getAccountSlots(account.id),
+      });
+    }
+
     const result = await pool.query(
       "SELECT * FROM users WHERE email = $1",
-      [email]
+      [cleanEmail]
     );
 
     const user = result.rows[0];
@@ -671,22 +960,44 @@ app.post("/profiles/bootstrap", async (req, res) => {
       return res.json({ success: true, token: newToken, user: mapUser(updated.rows[0]) });
     }
 
-    const seed = safeDeviceId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) || Date.now().toString();
-    const email = `${seed.toLowerCase()}@device.symbiosis.local`;
-    const nickname = `Player_${seed.slice(0, 8)}`;
     const password = `device:${safeDeviceId}`;
+    let result = null;
 
-    const result = await pool.query(
-      `
-      INSERT INTO users (
-        email, password, password_hash, nickname, device_id, public_player_id, language,
-        profile_completed, is_guest, updated_at
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, TRUE, NOW())
-      RETURNING *
-      `,
-      [email, password, hashPassword(password), nickname, safeDeviceId, generatePublicPlayerId(), normalizeLanguage(language)]
-    );
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const identity = createGuestIdentity(safeDeviceId);
+
+      try {
+        result = await pool.query(
+          `
+          INSERT INTO users (
+            email, password, password_hash, nickname, device_id, public_player_id, language,
+            profile_completed, is_guest, updated_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, TRUE, NOW())
+          RETURNING *
+          `,
+          [
+            identity.email,
+            password,
+            hashPassword(password),
+            identity.nickname,
+            safeDeviceId,
+            generatePublicPlayerId(),
+            normalizeLanguage(language),
+          ]
+        );
+        break;
+      } catch (err) {
+        const duplicateKey = err && err.code === "23505";
+        if (!duplicateKey || attempt === 4) {
+          throw err;
+        }
+      }
+    }
+
+    if (!result || result.rows.length === 0) {
+      throw new Error("Guest profile could not be created");
+    }
 
     const newToken = await createSession(result.rows[0].id, safeDeviceId);
     res.json({ success: true, token: newToken, user: mapUser(result.rows[0]) });
@@ -695,14 +1006,20 @@ app.post("/profiles/bootstrap", async (req, res) => {
   }
 });
 
-app.post("/profiles/complete", async (req, res) => {
-  const { deviceId, token, email, password, nickname, age, gender, avatarId, language } = req.body;
+async function registerDynastyProfile(req, res) {
+  const { deviceId, token, dynastyName, slotIndex, email, password, nickname, age, gender, avatarId, language } = req.body;
 
-  if ((!deviceId && !token) || !nickname) {
+  if (!nickname) {
     return res.status(400).json({ success: false, error: "Missing account or nickname" });
   }
 
-  if (!email || !password) {
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanDynastyName = normalizeDynastyName(dynastyName || nickname || cleanEmail.split("@")[0]);
+  if (!cleanDynastyName) {
+    return res.status(400).json({ success: false, error: "Dynasty name is required" });
+  }
+
+  if (!cleanEmail || !password) {
     return res.status(400).json({ success: false, error: "Email and password are required" });
   }
 
@@ -714,63 +1031,135 @@ app.post("/profiles/complete", async (req, res) => {
     const sessionUser = await getUserByToken(token);
     const deviceUser = await getUserByDevice(deviceId);
     const user = sessionUser || deviceUser;
+    const selectedSlot = getSlotIndex(slotIndex);
 
-    if (!user) {
-      return res.status(404).json({ success: false, error: "Profile not found" });
-    }
-
-    const emailOwner = await pool.query(
-      "SELECT id FROM users WHERE email = $1 AND id <> $2",
-      [String(email).trim().toLowerCase(), user.id]
+    let account = null;
+    const existingAccount = await pool.query(
+      "SELECT * FROM accounts WHERE email = $1",
+      [cleanEmail]
     );
 
-    if (emailOwner.rows.length > 0) {
-      return res.status(409).json({ success: false, error: "Email is already registered" });
+    if (existingAccount.rows.length > 0) {
+      account = existingAccount.rows[0];
+      if (!verifyPassword(password, account.password_hash, null)) {
+        return res.status(401).json({ success: false, error: "Invalid credentials for this dynasty account" });
+      }
+
+      if (account.dynasty_name !== cleanDynastyName) {
+        const updatedAccount = await pool.query(
+          "UPDATE accounts SET dynasty_name = $2, updated_at = NOW() WHERE id = $1 RETURNING *",
+          [account.id, cleanDynastyName]
+        );
+        account = updatedAccount.rows[0];
+      }
+    } else {
+      const createdAccount = await pool.query(
+        `
+        INSERT INTO accounts (dynasty_name, dynasty_id, email, password_hash, updated_at)
+        VALUES ($1, $2, $3, $4, NOW())
+        RETURNING *
+        `,
+        [cleanDynastyName, generateDynastyId(cleanDynastyName), cleanEmail, hashPassword(password)]
+      );
+      account = createdAccount.rows[0];
     }
 
-    const result = await pool.query(
-      `
-      UPDATE users
-      SET email = $2,
-          password = $3,
-          password_hash = $4,
-          nickname = $5,
-          age = $6,
-          gender = $7,
-          avatar_id = $8,
-          language = $9,
-          profile_completed = TRUE,
-          is_guest = FALSE,
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-      `,
-      [
-        user.id,
-        String(email).trim().toLowerCase(),
-        String(password),
-        hashPassword(password),
-        String(nickname).trim(),
-        Math.max(0, Number(age) || 0),
-        normalizeGender(gender),
-        Math.max(0, Number(avatarId) || 0),
-        normalizeLanguage(language),
-      ]
+    const existingSlot = await pool.query(
+      "SELECT * FROM users WHERE account_id = $1 AND slot_index = $2",
+      [account.id, selectedSlot]
     );
 
-    const nextToken = token || await createSession(user.id, deviceId);
-    await attachDevice(user.id, deviceId);
+    let targetUser = existingSlot.rows[0] || null;
+    const canClaimGuest = !targetUser && user && !user.account_id && !!user.is_guest;
+    const slotEmail = getSlotEmail(account.id, selectedSlot);
 
-    res.json({ success: true, token: nextToken, user: mapUser(result.rows[0]) });
+    if (targetUser || canClaimGuest) {
+      const targetUserId = targetUser ? targetUser.id : user.id;
+      const result = await pool.query(
+        `
+        UPDATE users
+        SET account_id = $2,
+            slot_index = $3,
+            email = $4,
+            password = $5,
+            password_hash = $6,
+            nickname = $7,
+            age = $8,
+            gender = $9,
+            avatar_id = $10,
+            language = $11,
+            profile_completed = TRUE,
+            is_guest = FALSE,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+        `,
+        [
+          targetUserId,
+          account.id,
+          selectedSlot,
+          slotEmail,
+          String(password),
+          hashPassword(password),
+          String(nickname).trim(),
+          Math.max(0, Number(age) || 0),
+          normalizeGender(gender),
+          Math.max(0, Number(avatarId) || 0),
+          normalizeLanguage(language),
+        ]
+      );
+      targetUser = result.rows[0];
+    } else {
+      const result = await pool.query(
+        `
+        INSERT INTO users (
+          account_id, slot_index, email, password, password_hash, nickname,
+          public_player_id, language, age, gender, avatar_id,
+          profile_completed, is_guest, updated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE, FALSE, NOW())
+        RETURNING *
+        `,
+        [
+          account.id,
+          selectedSlot,
+          slotEmail,
+          String(password),
+          hashPassword(password),
+          String(nickname).trim(),
+          generatePublicPlayerId(),
+          normalizeLanguage(language),
+          Math.max(0, Number(age) || 0),
+          normalizeGender(gender),
+          Math.max(0, Number(avatarId) || 0),
+        ]
+      );
+      targetUser = result.rows[0];
+    }
+
+    const nextToken = await createSession(targetUser.id, deviceId);
+    await attachDevice(targetUser.id, deviceId);
+
+    res.json({
+      success: true,
+      token: nextToken,
+      user: mapUser({ ...targetUser, account_email: account.email, dynasty_name: account.dynasty_name, dynasty_id: account.dynasty_id }),
+      account: mapAccount(account),
+      profiles: await getAccountSlots(account.id),
+    });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
-});
+}
+
+app.post("/profiles/register", registerDynastyProfile);
+app.post("/profiles/complete", registerDynastyProfile);
 
 app.get("/chat/global", async (req, res) => {
   const token = req.query.token;
   const sinceId = Math.max(0, Number(req.query.sinceId) || 0);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+  const channel = normalizeChatChannel(req.query.channel);
 
   try {
     const user = await getUserByToken(token);
@@ -789,11 +1178,11 @@ app.get("/chat/global", async (req, res) => {
         m.created_at
       FROM global_chat_messages m
       JOIN users u ON u.id = m.user_id
-      WHERE m.id > $1
+      WHERE m.id > $1 AND m.channel = $3
       ORDER BY m.id DESC
       LIMIT $2
       `,
-      [sinceId, limit]
+      [sinceId, limit, channel]
     );
 
     const messages = result.rows
@@ -804,10 +1193,11 @@ app.get("/chat/global", async (req, res) => {
         nickname: row.nickname,
         publicPlayerId: row.public_player_id,
         text: row.text,
+        channel,
         createdAt: row.created_at,
       }));
 
-    res.json({ success: true, messages });
+    res.json({ success: true, channel, messages });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -815,6 +1205,7 @@ app.get("/chat/global", async (req, res) => {
 
 app.post("/chat/global/send", async (req, res) => {
   const { token, text } = req.body;
+  const channel = normalizeChatChannel(req.body.channel);
   const cleanText = String(text || "").trim().replace(/\s+/g, " ");
 
   if (!cleanText) {
@@ -833,11 +1224,11 @@ app.post("/chat/global/send", async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO global_chat_messages (user_id, text)
-      VALUES ($1, $2)
-      RETURNING id, user_id, text, created_at
+      INSERT INTO global_chat_messages (user_id, channel, text)
+      VALUES ($1, $2, $3)
+      RETURNING id, user_id, channel, text, created_at
       `,
-      [user.id, cleanText]
+      [user.id, channel, cleanText]
     );
 
     const row = result.rows[0];
@@ -848,6 +1239,7 @@ app.post("/chat/global/send", async (req, res) => {
         userId: row.user_id,
         nickname: user.nickname,
         publicPlayerId: user.public_player_id,
+        channel: row.channel,
         text: row.text,
         createdAt: row.created_at,
       },
@@ -872,7 +1264,7 @@ app.post("/presence/heartbeat", async (req, res) => {
 
 app.get("/friends/search", async (req, res) => {
   const token = req.query.token;
-  const nickname = String(req.query.nickname || "").trim();
+  const nickname = normalizeLookup(req.query.nickname);
 
   if (nickname.length < 2) {
     return res.status(400).json({ success: false, error: "Enter at least 2 characters" });
@@ -919,7 +1311,7 @@ app.get("/friends/search", async (req, res) => {
 
 app.post("/friends/request-by-nickname", async (req, res) => {
   const { token, nickname } = req.body;
-  const cleanNickname = String(nickname || "").trim();
+  const cleanNickname = normalizeLookup(nickname);
 
   if (!cleanNickname) {
     return res.status(400).json({ success: false, error: "Missing nickname" });
@@ -931,12 +1323,7 @@ app.post("/friends/request-by-nickname", async (req, res) => {
       return res.status(401).json({ success: false, error: "Invalid session" });
     }
 
-    const targetResult = await pool.query(
-      "SELECT * FROM users WHERE LOWER(nickname) = LOWER($1) LIMIT 1",
-      [cleanNickname]
-    );
-
-    const target = targetResult.rows[0];
+    const target = await findFriendTargetByNicknameOrId(user.id, cleanNickname);
     if (!target) {
       return res.status(404).json({ success: false, error: "Player not found" });
     }
