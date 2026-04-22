@@ -1040,6 +1040,57 @@ app.post("/account/slots", async (req, res) => {
   }
 });
 
+app.post("/account/delete-slot", async (req, res) => {
+  const { email, password, slotIndex, deviceId } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ success: false, error: "Missing fields" });
+  }
+
+  try {
+    const cleanEmail = String(email).trim().toLowerCase();
+    const accountResult = await pool.query(
+      "SELECT * FROM accounts WHERE email = $1",
+      [cleanEmail]
+    );
+
+    const account = accountResult.rows[0];
+    if (!account || !verifyPassword(password, account.password_hash, null)) {
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
+    }
+
+    const requestedSlot = getSlotIndex(slotIndex);
+    const slotResult = await pool.query(
+      "SELECT * FROM users WHERE account_id = $1 AND slot_index = $2 AND profile_completed = TRUE",
+      [account.id, requestedSlot]
+    );
+
+    const user = slotResult.rows[0];
+    if (!user) {
+      return res.status(404).json({ success: false, error: "Profile slot not found" });
+    }
+
+    if (await isProfileInUseByOtherDevice(user.id, deviceId)) {
+      return res.status(409).json({
+        success: false,
+        error: "Profile is already in use on another device",
+        account: mapAccount(account),
+        profiles: await getAccountSlotOverview(account.id, deviceId),
+      });
+    }
+
+    await pool.query("DELETE FROM users WHERE id = $1", [user.id]);
+
+    res.json({
+      success: true,
+      account: mapAccount(account),
+      profiles: await getAccountSlotOverview(account.id, deviceId),
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post("/auth/logout", async (req, res) => {
   const { token } = req.body;
 
