@@ -318,6 +318,12 @@ function formatBytes(value) {
   return `${amount.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
+const SITE_ASSET_BASE_URL = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/main/downloads";
+
+function getSiteAssetUrl(fileName) {
+  return `${SITE_ASSET_BASE_URL}/${encodeURIComponent(fileName)}`;
+}
+
 function getChangelogEntries() {
   return [
     {
@@ -419,11 +425,227 @@ function getChangelogEntries() {
   ];
 }
 
-function renderChangelogEntry(entry) {
+const CHANGELOG_COPY = {
+  en: {
+    htmlLang: "en",
+    metaDescription: "DLSymbiosis update history and release notes.",
+    pageTitle: "DLSymbiosis Changelog",
+    homeLabel: "DLSymbiosis home",
+    primaryNav: "Primary navigation",
+    home: "Home",
+    download: "Download",
+    downloadLatest: "Download latest APK",
+    eyebrow: "Development History",
+    headline: "DLSymbiosis Changelog",
+    lead: "A living record of what changed in each Android build, from the first public APK to online ranked battles and future systems.",
+    latest: "Latest",
+    version: "Version",
+    footer: "Project changelog",
+    visualAlt: "Gateway to the Universe",
+    companyAlt: "Ozkullar Company",
+  },
+  ru: {
+    htmlLang: "ru",
+    metaDescription: "История обновлений и заметки к релизам DLSymbiosis.",
+    pageTitle: "Журнал обновлений DLSymbiosis",
+    homeLabel: "Главная DLSymbiosis",
+    primaryNav: "Основная навигация",
+    home: "Главная",
+    download: "Скачать",
+    downloadLatest: "Скачать последнюю APK",
+    eyebrow: "История разработки",
+    headline: "Журнал обновлений DLSymbiosis",
+    lead: "Короткая история изменений в каждой Android-сборке: от первой публичной APK до онлайн-боёв и будущих систем.",
+    latest: "Последнее",
+    version: "Версия",
+    footer: "Журнал проекта",
+    visualAlt: "Gateway to the Universe",
+    companyAlt: "Ozkullar Company",
+  },
+  tr: {
+    htmlLang: "tr",
+    metaDescription: "DLSymbiosis güncelleme geçmişi ve sürüm notları.",
+    pageTitle: "DLSymbiosis Güncelleme Günlüğü",
+    homeLabel: "DLSymbiosis ana sayfası",
+    primaryNav: "Ana gezinme",
+    home: "Ana sayfa",
+    download: "İndir",
+    downloadLatest: "En yeni APK'yi indir",
+    eyebrow: "Geliştirme Geçmişi",
+    headline: "DLSymbiosis Güncelleme Günlüğü",
+    lead: "İlk herkese açık APK'den çevrim içi savaşlara ve gelecek sistemlere kadar her Android sürümünde değişenlerin kısa kaydı.",
+    latest: "En yeni",
+    version: "Sürüm",
+    footer: "Proje günlüğü",
+    visualAlt: "Gateway to the Universe",
+    companyAlt: "Ozkullar Company",
+  },
+};
+
+const CHANGELOG_ENTRY_COPY = {
+  ru: {
+    "1.0.7": {
+      title: "Хроника проекта",
+      summary: "Добавлена страница истории обновлений на сайте и окно changelog в игре, чтобы игроки могли следить за развитием Symbiosis.",
+      changes: [
+        "Добавлена публичная страница обновлений на dlsymbiosis.com.",
+        "Добавлена кнопка обновлений в главные меню и лобби.",
+        "Игра читает записи обновлений с сервера и имеет офлайн-резерв."
+      ]
+    },
+    "1.0.6": {
+      title: "Стабильное онлайн-подключение",
+      summary: "Онлайн-сервисы переведены на HTTPS через dlsymbiosis.com, чтобы улучшить матчмейкинг и доступ к аккаунтам из разных сетей.",
+      changes: [
+        "Клиент игры переключён с прямых HTTP IP-запросов на HTTPS-домен.",
+        "Обновлён Android-манифест распространения APK.",
+        "Исправлена прямая маршрутизация скачивания APK."
+      ]
+    },
+    "1.0.5": {
+      title: "Онлайн ranked матчмейкинг",
+      summary: "Добавлен серверный поиск ranked-сражений с авторитетным состоянием матча и проверкой общей доски боя.",
+      changes: [
+        "Игроки могут входить в ranked-поиск и ждать онлайн-соперника.",
+        "Сервер создаёт ranked-матчи и генерирует боевую доску.",
+        "Выбор плиток, открытия, урон и завершение боя проверяются сервером."
+      ]
+    },
+    "1.0.4": {
+      title: "Локальный Wi-Fi бой",
+      summary: "Добавлены бои по локальной сети, чтобы два устройства в одной Wi-Fi сети могли находить друг друга и играть.",
+      changes: [
+        "Создан поток комнат для локального Wi-Fi.",
+        "Добавлена логика хоста и подключения для устройств рядом.",
+        "Улучшена синхронизация боя для локальных multiplayer-раундов."
+      ]
+    },
+    "1.0.3": {
+      title: "Профили, друзья и чат",
+      summary: "Расширены системы аккаунтов, чтобы игроки сохраняли профиль и могли общаться через сервер.",
+      changes: [
+        "Добавлены серверные профили и вход в аккаунт.",
+        "Добавлены друзья и заявки.",
+        "Добавлена поддержка глобального чата."
+      ]
+    },
+    "1.0.2": {
+      title: "Персонажи и удалённый контент",
+      summary: "Каталог персонажей перенесён ближе к серверному управлению для более удобного баланса и обновлений.",
+      changes: [
+        "Добавлен endpoint удалённого каталога персонажей.",
+        "Данные боевых персонажей подключены к серверному контенту.",
+        "Подготовлена поддержка Android addressable-контента."
+      ]
+    },
+    "1.0.1": {
+      title: "Android-обновления",
+      summary: "Добавлены APK-метаданные обновлений и первый сценарий скачивания Android-сборок через сайт.",
+      changes: [
+        "Добавлен Android-манифест обновления.",
+        "Добавлена публичная страница скачивания APK.",
+        "Добавлены заметки к релизу в окне обновления."
+      ]
+    },
+    "1.0.0": {
+      title: "Первая публичная Android-сборка",
+      summary: "Опубликована первая основа Android-сборки для Symbiosis Mahjong Battle.",
+      changes: [
+        "Собрана Android APK.",
+        "Подготовлена публичная входная страница сайта.",
+        "Начата публичная история сборок."
+      ]
+    }
+  },
+  tr: {
+    "1.0.7": {
+      title: "Proje Günlüğü",
+      summary: "Oyuncuların Symbiosis'in gelişimini takip edebilmesi için web sitesine güncelleme geçmişi sayfası ve oyuna changelog penceresi eklendi.",
+      changes: [
+        "dlsymbiosis.com üzerinde herkese açık güncelleme sayfası eklendi.",
+        "Ana menülere ve lobilere Güncellemeler düğmesi eklendi.",
+        "Oyun, güncelleme kayıtlarını sunucudan okur ve çevrim dışı yedeğe sahiptir."
+      ]
+    },
+    "1.0.6": {
+      title: "Güvenilir Çevrim İçi Bağlantı",
+      summary: "Farklı ağlardan eşleştirme ve hesap erişimini iyileştirmek için çevrim içi servisler dlsymbiosis.com üzerinden HTTPS'e taşındı.",
+      changes: [
+        "Oyun istemcisi doğrudan HTTP IP çağrılarından HTTPS alan adı çağrılarına geçirildi.",
+        "Android APK dağıtım manifesti güncellendi.",
+        "Doğrudan APK indirme yönlendirmesi düzeltildi."
+      ]
+    },
+    "1.0.5": {
+      title: "Çevrim İçi Ranked Eşleştirme",
+      summary: "Sunucu destekli ranked savaş araması, yetkili maç durumu ve ortak savaş tahtası doğrulaması eklendi.",
+      changes: [
+        "Oyuncular ranked eşleştirmeye girip çevrim içi rakip bekleyebilir.",
+        "Sunucu ranked maçları oluşturur ve savaş tahtasını üretir.",
+        "Taş seçimleri, açılışlar, hasar ve bitiş olayları sunucu tarafından doğrulanır."
+      ]
+    },
+    "1.0.4": {
+      title: "Yerel Wi-Fi Savaşı",
+      summary: "Aynı Wi-Fi ağındaki iki cihazın birbirini bulup oynayabilmesi için yerel ağ savaşları eklendi.",
+      changes: [
+        "Yerel Wi-Fi oda akışı oluşturuldu.",
+        "Yakındaki cihazlar için host ve katılma mantığı eklendi.",
+        "Yerel multiplayer turları için savaş senkronizasyonu iyileştirildi."
+      ]
+    },
+    "1.0.3": {
+      title: "Profiller, Arkadaşlar ve Sohbet",
+      summary: "Oyuncuların profil kimliğini koruyup sunucu üzerinden iletişim kurabilmesi için hesap sistemleri genişletildi.",
+      changes: [
+        "Sunucu profilleri ve hesap giriş akışı eklendi.",
+        "Arkadaşlar ve istekler eklendi.",
+        "Genel sohbet desteği eklendi."
+      ]
+    },
+    "1.0.2": {
+      title: "Karakterler ve Uzak İçerik",
+      summary: "Dengeleme ve güncellemeleri kolaylaştırmak için karakter katalog verileri sunucu kontrollü içeriğe taşındı.",
+      changes: [
+        "Uzak karakter kataloğu endpoint'i eklendi.",
+        "Savaş karakter verileri sunucu içeriğine bağlandı.",
+        "Android addressable içerik desteği hazırlandı."
+      ]
+    },
+    "1.0.1": {
+      title: "Android Güncellemeleri",
+      summary: "APK güncelleme metadatası ve Android sürümleri için ilk web sitesi indirme akışı eklendi.",
+      changes: [
+        "Android güncelleme manifesti eklendi.",
+        "Herkese açık APK indirme sayfası eklendi.",
+        "Güncelleme penceresine sürüm notları eklendi."
+      ]
+    },
+    "1.0.0": {
+      title: "İlk Herkese Açık Android Sürümü",
+      summary: "Symbiosis Mahjong Battle için ilk Android sürüm temeli yayınlandı.",
+      changes: [
+        "Android APK paketlendi.",
+        "Herkese açık web sitesi giriş noktası hazırlandı.",
+        "Herkese açık sürüm geçmişi başlatıldı."
+      ]
+    }
+  }
+};
+
+function getLocalizedChangelogEntries(locale) {
+  const translations = CHANGELOG_ENTRY_COPY[locale] || {};
+  return getChangelogEntries().map((entry) => ({
+    ...entry,
+    ...(translations[entry.version] || {}),
+  }));
+}
+
+function renderChangelogEntry(entry, copy) {
   const changes = Array.isArray(entry.changes) ? entry.changes : [];
   return `<article class="timeline-item">
     <div class="timeline-meta">
-      <span class="pill">Version ${escapeHtml(entry.version)}</span>
+      <span class="pill">${escapeHtml(copy.version)} ${escapeHtml(entry.version)}</span>
       <span class="date">${escapeHtml(entry.date)}</span>
     </div>
     <h3>${escapeHtml(entry.title)}</h3>
@@ -432,54 +654,55 @@ function renderChangelogEntry(entry) {
   </article>`;
 }
 
-function renderChangelogPage() {
-  const entries = getChangelogEntries();
+function renderChangelogPage(req) {
+  const locale = getLandingLocale(req);
+  const copy = CHANGELOG_COPY[locale] || CHANGELOG_COPY.en;
+  const entries = getLocalizedChangelogEntries(locale);
   const latest = entries[0];
+  const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
+  const sloganUrl = getSiteAssetUrl("Slogan.png");
+  const companyUrl = getSiteAssetUrl("OzkullarCompany.png");
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(copy.htmlLang)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1014">
-  <meta name="description" content="DLSymbiosis update history and release notes.">
-  <title>DLSymbiosis Changelog</title>
+  <meta name="description" content="${escapeHtml(copy.metaDescription)}">
+  <meta property="og:image" content="${escapeHtml(logoUrl)}">
+  <link rel="icon" type="image/png" href="${escapeHtml(logoUrl)}">
+  <title>${escapeHtml(copy.pageTitle)}</title>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b1014;
-      --ink: #f6f1e7;
-      --muted: #b9c4ca;
-      --line: rgba(255,255,255,.14);
-      --panel: rgba(18,25,31,.86);
-      --gold: #f2b95f;
-      --jade: #65d1b4;
-      --cyan: #6bd9ee;
+      --bg: #0c0f12;
+      --ink: #f4efe5;
+      --muted: #a8b0b6;
+      --line: rgba(255,255,255,.12);
+      --panel: #12171b;
+      --gold: #d9ad67;
+      --jade: #6fc6ae;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        linear-gradient(180deg, rgba(7,10,13,.44), rgba(7,10,13,.88)),
-        radial-gradient(circle at 82% 8%, rgba(101,209,180,.2), transparent 25rem),
-        radial-gradient(circle at 16% 20%, rgba(242,185,95,.16), transparent 24rem),
-        var(--bg);
+      background: var(--bg);
       min-height: 100vh;
     }
     a { color: inherit; }
-    .shell { width: min(980px, calc(100% - 32px)); margin: 0 auto; }
+    .shell { width: min(1040px, calc(100% - 32px)); margin: 0 auto; }
     header {
       position: sticky;
       top: 0;
       z-index: 10;
-      backdrop-filter: blur(18px);
-      background: rgba(11,16,20,.74);
+      background: rgba(12,15,18,.88);
       border-bottom: 1px solid var(--line);
     }
     .nav {
-      min-height: 72px;
+      min-height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -490,32 +713,62 @@ function renderChangelogPage() {
       align-items: center;
       gap: 12px;
       text-decoration: none;
-      font-weight: 850;
+      font-weight: 800;
     }
-    .mark {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      color: #101418;
-      background: linear-gradient(135deg, var(--gold), var(--jade));
-      font-weight: 900;
+    .brand img {
+      display: block;
+      width: min(190px, 42vw);
+      height: auto;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 22px;
     }
     .navlinks {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 22px;
       color: var(--muted);
       font-size: 14px;
     }
     .navlinks a { text-decoration: none; white-space: nowrap; }
     .navlinks a:hover { color: var(--ink); }
-    .hero { padding: 72px 0 42px; }
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .lang-switch a {
+      min-width: 34px;
+      min-height: 30px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .lang-switch a.active {
+      color: var(--bg);
+      background: var(--gold);
+    }
+    .hero {
+      padding: 72px 0 42px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 48px;
+      align-items: center;
+    }
     .eyebrow {
       color: var(--gold);
-      font-weight: 850;
-      letter-spacing: .12em;
+      font-weight: 750;
+      letter-spacing: .08em;
       text-transform: uppercase;
       font-size: 12px;
       margin-bottom: 18px;
@@ -525,6 +778,15 @@ function renderChangelogPage() {
       font-size: clamp(42px, 8vw, 78px);
       line-height: .94;
       letter-spacing: 0;
+    }
+    .brand-art {
+      display: grid;
+      gap: 18px;
+    }
+    .brand-art img {
+      display: block;
+      width: 100%;
+      height: auto;
     }
     .lead {
       max-width: 720px;
@@ -547,13 +809,14 @@ function renderChangelogPage() {
       align-items: center;
       justify-content: center;
       text-decoration: none;
-      font-weight: 850;
+      font-weight: 800;
       border: 1px solid var(--line);
       background: rgba(255,255,255,.06);
     }
     .button.primary {
-      color: #0d1114;
-      background: linear-gradient(180deg, #ffe0a4, var(--gold));
+      color: var(--bg);
+      background: var(--gold);
+      border-color: transparent;
     }
     .timeline {
       padding: 22px 0 76px;
@@ -606,43 +869,56 @@ function renderChangelogPage() {
       font-size: 14px;
     }
     @media (max-width: 560px) {
-      .shell { width: min(100% - 22px, 980px); }
+      .shell { width: min(100% - 22px, 1040px); }
+      .hero { grid-template-columns: 1fr; padding-top: 46px; }
       .button { width: 100%; }
-      .navlinks { display: none; }
-      .hero { padding-top: 46px; }
+      .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
+      .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
+      .navlinks { gap: 14px; }
     }
   </style>
 </head>
 <body>
   <header>
     <div class="shell nav">
-      <a class="brand" href="/" aria-label="DLSymbiosis home">
-        <span class="mark">DL</span>
-        <span>DLSymbiosis</span>
+      <a class="brand" href="${escapeHtml(withLangPath("/", locale))}" aria-label="${escapeHtml(copy.homeLabel)}">
+        <img src="${escapeHtml(logoUrl)}" alt="DLSymbiosis" width="1187" height="188">
       </a>
-      <nav class="navlinks" aria-label="Primary navigation">
-        <a href="/">Home</a>
-        <a href="/download">Download</a>
-      </nav>
+      <div class="nav-right">
+        <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
+          <a href="${escapeHtml(withLangPath("/", locale))}">${escapeHtml(copy.home)}</a>
+          <a href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.download)}</a>
+        </nav>
+        <nav class="lang-switch" aria-label="Language">
+          <a class="${locale === "en" ? "active" : ""}" href="/changelog?lang=en" lang="en">EN</a>
+          <a class="${locale === "ru" ? "active" : ""}" href="/changelog?lang=ru" lang="ru">RU</a>
+          <a class="${locale === "tr" ? "active" : ""}" href="/changelog?lang=tr" lang="tr">TR</a>
+        </nav>
+      </div>
     </div>
   </header>
   <main>
     <section class="shell hero">
-      <div class="eyebrow">Development History</div>
-      <h1>DLSymbiosis Changelog</h1>
-      <p class="lead">A living record of what changed in each Android build, from the first public APK to online ranked battles and future systems.</p>
-      <div class="actions">
-        <a class="button primary" href="/download">Download latest APK</a>
-        <a class="button" href="/updates/changelog">Open JSON feed</a>
+      <div>
+        <div class="eyebrow">${escapeHtml(copy.eyebrow)}</div>
+        <h1>${escapeHtml(copy.headline)}</h1>
+        <p class="lead">${escapeHtml(copy.lead)}</p>
+        <div class="actions">
+          <a class="button primary" href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.downloadLatest)}</a>
+        </div>
+        <p class="lead">${escapeHtml(copy.latest)}: ${escapeHtml(latest.version)} - ${escapeHtml(latest.title)}</p>
       </div>
-      <p class="lead">Latest: ${escapeHtml(latest.version)} - ${escapeHtml(latest.title)}</p>
+      <div class="brand-art" aria-label="DLSymbiosis artwork">
+        <img src="${escapeHtml(sloganUrl)}" alt="${escapeHtml(copy.visualAlt)}" width="951" height="303">
+        <img src="${escapeHtml(companyUrl)}" alt="${escapeHtml(copy.companyAlt)}" width="1047" height="312">
+      </div>
     </section>
     <section class="shell timeline">
-      ${entries.map(renderChangelogEntry).join("")}
+      ${entries.map((entry) => renderChangelogEntry(entry, copy)).join("")}
     </section>
   </main>
   <footer>
-    <div class="shell">(c) ${new Date().getFullYear()} DLSymbiosis / Project changelog</div>
+    <div class="shell">(c) ${new Date().getFullYear()} DLSymbiosis / ${escapeHtml(copy.footer)}</div>
   </footer>
 </body>
 </html>`;
@@ -934,10 +1210,9 @@ function renderSymbiosisLandingPage(req) {
   const pageTitle = "DLSymbiosis - Mahjong Battle";
   const locale = getLandingLocale(req);
   const copy = LANDING_COPY[locale] || LANDING_COPY.en;
-  const assetBaseUrl = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/main/downloads";
-  const logoUrl = `${assetBaseUrl}/SymbiosisLogo.png`;
-  const devCreditUrl = `${assetBaseUrl}/DevelopmentAndDesign.png`;
-  const madeForUrl = `${assetBaseUrl}/MadeForDynastyLegacy.png`;
+  const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
+  const devCreditUrl = getSiteAssetUrl("DevelopmentAndDesign.png");
+  const madeForUrl = getSiteAssetUrl("MadeForDynastyLegacy.png");
 
   return `<!doctype html>
 <html lang="${escapeHtml(copy.htmlLang)}">
@@ -2440,7 +2715,7 @@ app.get("/download", (req, res) => {
 });
 
 app.get("/changelog", (req, res) => {
-  res.type("html").send(renderChangelogPage());
+  res.type("html").send(renderChangelogPage(req));
 });
 
 app.get("/apk", (req, res) => {
