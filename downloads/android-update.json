@@ -1,15 +1,15 @@
 {
   "success": true,
   "platform": "android",
-  "latestVersion": "1.0.6",
-  "latestVersionCode": 100006,
-  "versionName": "1.0.6",
-  "versionCode": 100006,
+  "latestVersion": "1.0.7",
+  "latestVersionCode": 100007,
+  "versionName": "1.0.7",
+  "versionCode": 100007,
   "minimumVersionCode": 1,
   "forceUpdate": false,
   "updateUrl": "https://dlsymbiosis.com/downloads/symbiosis-latest.apk",
   "apkUrl": "https://dlsymbiosis.com/downloads/symbiosis-latest.apk",
-  "sha256": "a0e2aefdb7bd8526e5c807cb82c6a89ef9e0dbdc20b3b69604fe8bd602d31b29",
-  "sizeBytes": 73519433,
-  "releaseNotes": "Routes online services through HTTPS dlsymbiosis.com for reliable mobile network connections."
+  "sha256": "f3fcab11e3dd08187b96ec7815b5794d50f12876081533ff437cec4562a71565",
+  "sizeBytes": 73170320,
+  "releaseNotes": "Adds random and ranked matchmaking search screens, bot fallback, updated battle tile backs, and hides lobby buttons during battles."
 }
