@@ -30,6 +30,12 @@ const SEED_TEST_NICKNAME = process.env.SEED_TEST_NICKNAME || "TestPlayer";
 const SEED_TEST_PUBLIC_PLAYER_ID = process.env.SEED_TEST_PUBLIC_PLAYER_ID || "MB-TEST0001";
 const RANKED_QUEUE_TIMEOUT_SECONDS = readIntEnv("RANKED_QUEUE_TIMEOUT_SECONDS", 90);
 const RANKED_MATCH_TTL_SECONDS = readIntEnv("RANKED_MATCH_TTL_SECONDS", 60 * 60 * 3);
+const ANDROID_EMBEDDED_VERSION_NAME = "1.0.5";
+const ANDROID_EMBEDDED_VERSION_CODE = 100005;
+const ANDROID_EMBEDDED_APK_URL = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/main/downloads/symbiosis-latest.apk";
+const ANDROID_EMBEDDED_APK_SHA256 = "9d89239f8e9d267f18e2ad7e961b76b69c0cf0d082be24d141e848a03efbdae6";
+const ANDROID_EMBEDDED_APK_SIZE_BYTES = 73519461;
+const ANDROID_EMBEDDED_RELEASE_NOTES = "Full online ranked matchmaking through the public server with authoritative board generation and battle validation.";
 
 const rankedQueue = new Map();
 const rankedMatches = new Map();
@@ -236,17 +242,35 @@ function getAndroidUpdateManifest() {
     releaseNotes: process.env.ANDROID_RELEASE_NOTES || "A new Symbiosis build is available.",
     checkedAt: new Date().toISOString(),
   };
+  const embedded = {
+    success: true,
+    platform: "android",
+    latestVersion: ANDROID_EMBEDDED_VERSION_NAME,
+    latestVersionCode: ANDROID_EMBEDDED_VERSION_CODE,
+    versionName: ANDROID_EMBEDDED_VERSION_NAME,
+    versionCode: ANDROID_EMBEDDED_VERSION_CODE,
+    minimumVersionCode,
+    forceUpdate: false,
+    updateUrl: ANDROID_EMBEDDED_APK_URL,
+    apkUrl: ANDROID_EMBEDDED_APK_URL,
+    apkAvailable: true,
+    apkSizeBytes: ANDROID_EMBEDDED_APK_SIZE_BYTES,
+    sizeBytes: ANDROID_EMBEDDED_APK_SIZE_BYTES,
+    sha256: ANDROID_EMBEDDED_APK_SHA256,
+    releaseNotes: ANDROID_EMBEDDED_RELEASE_NOTES,
+    checkedAt: new Date().toISOString(),
+  };
 
   try {
     if (!fs.existsSync(filePath)) {
-      return fallback;
+      return embedded.latestVersionCode > fallback.latestVersionCode ? embedded : fallback;
     }
 
     const fileManifest = JSON.parse(fs.readFileSync(filePath, "utf8"));
     const resolvedVersionName = fileManifest.versionName || fileManifest.latestVersion || fallback.latestVersion;
     const resolvedVersionCode = Number(fileManifest.versionCode || fileManifest.latestVersionCode || fallback.latestVersionCode);
     const resolvedUpdateUrl = fileManifest.apkUrl || fileManifest.updateUrl || fallback.updateUrl;
-    return {
+    const resolvedManifest = {
       ...fallback,
       ...fileManifest,
       success: true,
@@ -257,9 +281,11 @@ function getAndroidUpdateManifest() {
       apkUrl: resolvedUpdateUrl,
       checkedAt: new Date().toISOString(),
     };
+
+    return embedded.latestVersionCode > resolvedManifest.latestVersionCode ? embedded : resolvedManifest;
   } catch (err) {
     console.warn("Android update manifest read failed", err.message);
-    return fallback;
+    return embedded.latestVersionCode > fallback.latestVersionCode ? embedded : fallback;
   }
 }
 
