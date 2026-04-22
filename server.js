@@ -2761,6 +2761,15 @@ app.post("/battle/ranked/cancel", async (req, res) => {
   }
 });
 
+app.get("/battle/ranked/version", (req, res) => {
+  res.json({
+    success: true,
+    protocol: "authoritative-server-board-v1",
+    authoritative: true,
+    serverGeneratesBoard: true,
+  });
+});
+
 app.post("/battle/ranked/event", async (req, res) => {
   try {
     cleanupRankedMatchmaking();
