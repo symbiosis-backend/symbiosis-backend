@@ -817,7 +817,111 @@ function renderAndroidDownloadPage() {
 </html>`;
 }
 
-function renderSymbiosisLandingPage() {
+function getLandingLocale(req) {
+  const requested = String((req && req.query && req.query.lang) || "").trim().toLowerCase();
+  if (["en", "ru", "tr"].includes(requested)) {
+    return requested;
+  }
+
+  const acceptLanguage = String((req && req.headers && req.headers["accept-language"]) || "").toLowerCase();
+  if (acceptLanguage.includes("ru")) {
+    return "ru";
+  }
+  if (acceptLanguage.includes("tr")) {
+    return "tr";
+  }
+  return "en";
+}
+
+const LANDING_COPY = {
+  en: {
+    htmlLang: "en",
+    metaDescription: "Download DLSymbiosis, a Mahjong Battle game for Android with online profiles and local Wi-Fi duels.",
+    ogDescription: "Mahjong Battle for Android. Download the latest APK.",
+    homeLabel: "DLSymbiosis home",
+    primaryNav: "Primary navigation",
+    download: "Download",
+    updates: "Updates",
+    contact: "Contact",
+    eyebrow: "Mahjong Battle for Android",
+    lead: "A fast Mahjong battle game for Android. Download the current APK, install it, and play with your profile online or over local Wi-Fi.",
+    downloadApk: "Download APK",
+    version: "Version",
+    updated: "Updated",
+    latestBuild: "Latest build",
+    buildLabel: "Latest Android build",
+    platform: "Platform",
+    androidApk: "Android APK",
+    mode: "Mode",
+    onlineWifi: "Online / Wi-Fi",
+    support: "Support",
+    creditsLabel: "Project credits",
+    creditsTitle: "Development and art",
+    creditsText: "DLSymbiosis is built for Dynasty Legacy, with development and construction by BlackYang and art and design by WhiteYin.",
+    madeForAlt: "Made for Dynasty Legacy",
+    devAlt: "Development and construction by BlackYang. Art and design by WhiteYin.",
+  },
+  ru: {
+    htmlLang: "ru",
+    metaDescription: "Скачайте DLSymbiosis, Mahjong Battle для Android с онлайн-профилями и дуэлями по локальной Wi-Fi сети.",
+    ogDescription: "Mahjong Battle для Android. Скачайте последнюю APK-сборку.",
+    homeLabel: "Главная DLSymbiosis",
+    primaryNav: "Основная навигация",
+    download: "Скачать",
+    updates: "Обновления",
+    contact: "Контакты",
+    eyebrow: "Mahjong Battle для Android",
+    lead: "Быстрая Mahjong Battle игра для Android. Скачайте актуальную APK, установите её и играйте с профилем онлайн или по локальной Wi-Fi сети.",
+    downloadApk: "Скачать APK",
+    version: "Версия",
+    updated: "Обновлено",
+    latestBuild: "Последняя сборка",
+    buildLabel: "Последняя Android-сборка",
+    platform: "Платформа",
+    androidApk: "Android APK",
+    mode: "Режим",
+    onlineWifi: "Онлайн / Wi-Fi",
+    support: "Поддержка",
+    creditsLabel: "Авторы проекта",
+    creditsTitle: "Разработка и арт",
+    creditsText: "DLSymbiosis создана для Dynasty Legacy. Разработка и конструкция: BlackYang. Арт и дизайн: WhiteYin.",
+    madeForAlt: "Создано для Dynasty Legacy",
+    devAlt: "Разработка и конструкция: BlackYang. Арт и дизайн: WhiteYin.",
+  },
+  tr: {
+    htmlLang: "tr",
+    metaDescription: "DLSymbiosis'i indirin: Android için çevrim içi profiller ve yerel Wi-Fi düelloları olan bir Mahjong Battle oyunu.",
+    ogDescription: "Android için Mahjong Battle. En yeni APK'yi indirin.",
+    homeLabel: "DLSymbiosis ana sayfası",
+    primaryNav: "Ana gezinme",
+    download: "İndir",
+    updates: "Güncellemeler",
+    contact: "İletişim",
+    eyebrow: "Android için Mahjong Battle",
+    lead: "Android için hızlı bir Mahjong Battle oyunu. Güncel APK'yi indirin, kurun ve profilinizle çevrim içi ya da yerel Wi-Fi üzerinden oynayın.",
+    downloadApk: "APK indir",
+    version: "Sürüm",
+    updated: "Güncellendi",
+    latestBuild: "Son sürüm",
+    buildLabel: "Son Android sürümü",
+    platform: "Platform",
+    androidApk: "Android APK",
+    mode: "Mod",
+    onlineWifi: "Çevrim içi / Wi-Fi",
+    support: "Destek",
+    creditsLabel: "Proje ekibi",
+    creditsTitle: "Geliştirme ve sanat",
+    creditsText: "DLSymbiosis, Dynasty Legacy için hazırlandı. Geliştirme ve kurulum BlackYang, sanat ve tasarım WhiteYin tarafından yapıldı.",
+    madeForAlt: "Dynasty Legacy için yapıldı",
+    devAlt: "Geliştirme ve kurulum BlackYang. Sanat ve tasarım WhiteYin.",
+  },
+};
+
+function withLangPath(path, lang) {
+  return `${path}?lang=${encodeURIComponent(lang)}`;
+}
+
+function renderSymbiosisLandingPage(req) {
   const manifest = getAndroidUpdateManifest();
   const baseUrl = getPublicBaseUrl();
   const apkUrl = manifest.apkUrl || manifest.updateUrl || `${baseUrl}/downloads/symbiosis-latest.apk`;
@@ -828,32 +932,34 @@ function renderSymbiosisLandingPage() {
   const updatedAt = manifest.updatedAt || manifest.checkedAt || new Date().toISOString();
   const supportEmail = "support@dlsymbiosis.com";
   const pageTitle = "DLSymbiosis - Mahjong Battle";
+  const locale = getLandingLocale(req);
+  const copy = LANDING_COPY[locale] || LANDING_COPY.en;
+  const logoUrl = "/downloads/SymbiosisLogo.png";
+  const devCreditUrl = "/downloads/DevelopmentAndDesign.png";
+  const madeForUrl = "/downloads/MadeForDynastyLegacy.png";
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${escapeHtml(copy.htmlLang)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1014">
-  <meta name="description" content="Download DLSymbiosis, a Mahjong Battle game for Android with online profiles, ranked battles, and local Wi-Fi duels.">
+  <meta name="description" content="${escapeHtml(copy.metaDescription)}">
   <meta property="og:title" content="${escapeHtml(pageTitle)}">
-  <meta property="og:description" content="Mahjong Battle for Android. Download the latest APK.">
+  <meta property="og:description" content="${escapeHtml(copy.ogDescription)}">
+  <meta property="og:image" content="${escapeHtml(`${baseUrl}${logoUrl}`)}">
+  <link rel="icon" type="image/png" href="${escapeHtml(logoUrl)}">
   <title>${escapeHtml(pageTitle)}</title>
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b1014;
-      --ink: #f6f1e7;
-      --muted: #b9c4ca;
-      --soft: rgba(255,255,255,.08);
-      --line: rgba(255,255,255,.14);
-      --panel: rgba(18,25,31,.84);
-      --panel-strong: rgba(24,35,42,.96);
-      --gold: #f2b95f;
-      --jade: #65d1b4;
-      --red: #d95045;
-      --cyan: #6bd9ee;
-      --shadow: 0 26px 90px rgba(0,0,0,.36);
+      --bg: #0c0f12;
+      --ink: #f4efe5;
+      --muted: #a8b0b6;
+      --line: rgba(255,255,255,.12);
+      --panel: #12171b;
+      --gold: #d9ad67;
+      --jade: #6fc6ae;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -861,25 +967,20 @@ function renderSymbiosisLandingPage() {
       margin: 0;
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:
-        linear-gradient(180deg, rgba(7,10,13,.48), rgba(7,10,13,.86)),
-        radial-gradient(circle at 78% 8%, rgba(101,209,180,.22), transparent 25rem),
-        radial-gradient(circle at 12% 22%, rgba(217,80,69,.18), transparent 25rem),
-        #0b1014;
+      background: var(--bg);
       min-height: 100vh;
     }
     a { color: inherit; }
-    .shell { width: min(1160px, calc(100% - 32px)); margin: 0 auto; }
+    .shell { width: min(1040px, calc(100% - 32px)); margin: 0 auto; }
     header {
       position: sticky;
       top: 0;
       z-index: 10;
-      backdrop-filter: blur(18px);
-      background: rgba(11,16,20,.72);
+      background: rgba(12,15,18,.88);
       border-bottom: 1px solid var(--line);
     }
     .nav {
-      min-height: 72px;
+      min-height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -890,24 +991,22 @@ function renderSymbiosisLandingPage() {
       align-items: center;
       gap: 12px;
       text-decoration: none;
-      font-weight: 850;
-      letter-spacing: .02em;
+      font-weight: 800;
     }
-    .mark {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      color: #101418;
-      background: linear-gradient(135deg, var(--gold), var(--jade));
-      font-weight: 900;
-      box-shadow: 0 10px 30px rgba(101,209,180,.22);
+    .brand img {
+      display: block;
+      width: min(190px, 42vw);
+      height: auto;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 22px;
     }
     .navlinks {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 22px;
       color: var(--muted);
       font-size: 14px;
     }
@@ -916,253 +1015,169 @@ function renderSymbiosisLandingPage() {
       white-space: nowrap;
     }
     .navlinks a:hover { color: var(--ink); }
-    .hero {
-      min-height: calc(100vh - 72px);
-      display: grid;
-      grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr);
+    .lang-switch {
+      display: flex;
       align-items: center;
-      gap: 44px;
-      padding: 52px 0 72px;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 4px;
     }
-    .eyebrow {
+    .lang-switch a {
+      min-width: 34px;
+      min-height: 30px;
+      border-radius: 6px;
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      color: var(--gold);
+      justify-content: center;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
       font-weight: 800;
-      letter-spacing: .12em;
+    }
+    .lang-switch a.active {
+      color: var(--bg);
+      background: var(--gold);
+    }
+    .hero {
+      min-height: calc(100vh - 64px);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      align-items: center;
+      gap: 56px;
+      padding: 80px 0 72px;
+    }
+    .eyebrow {
+      color: var(--gold);
+      font-weight: 750;
+      letter-spacing: .08em;
       text-transform: uppercase;
       font-size: 12px;
-      margin-bottom: 18px;
-    }
-    .eyebrow::before {
-      content: "";
-      width: 42px;
-      height: 2px;
-      background: var(--gold);
+      margin-bottom: 16px;
     }
     h1 {
       margin: 0;
-      max-width: 760px;
-      font-size: clamp(46px, 7vw, 92px);
-      line-height: .92;
+      max-width: 700px;
+      font-size: clamp(44px, 7vw, 86px);
+      line-height: .95;
       letter-spacing: 0;
     }
+    .hero-logo {
+      display: block;
+      width: min(620px, 100%);
+      height: auto;
+      margin: 0 0 24px;
+    }
     .lead {
-      max-width: 660px;
-      margin: 24px 0 0;
+      max-width: 580px;
+      margin: 22px 0 0;
       color: var(--muted);
-      font-size: clamp(18px, 2vw, 22px);
-      line-height: 1.55;
+      font-size: clamp(18px, 2vw, 21px);
+      line-height: 1.5;
     }
     .actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 14px;
-      margin-top: 34px;
+      gap: 12px;
+      margin-top: 32px;
     }
     .button {
-      min-height: 58px;
-      padding: 0 24px;
-      border-radius: 10px;
+      min-height: 50px;
+      padding: 0 20px;
+      border-radius: 8px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       text-decoration: none;
-      font-weight: 850;
+      font-weight: 800;
       border: 1px solid var(--line);
     }
     .button.primary {
-      color: #0d1114;
-      background: linear-gradient(180deg, #ffe0a4, var(--gold));
-      border-color: rgba(255,255,255,.16);
-      box-shadow: 0 18px 46px rgba(242,185,95,.25);
+      color: var(--bg);
+      background: var(--gold);
+      border-color: transparent;
     }
     .button.secondary {
       color: var(--ink);
-      background: rgba(255,255,255,.06);
+      background: transparent;
     }
     .version {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 14px;
       margin-top: 24px;
       color: var(--muted);
       font-size: 14px;
     }
-    .pill {
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.045);
-      border-radius: 999px;
-      padding: 8px 12px;
+    .version span + span::before {
+      content: "/";
+      color: rgba(255,255,255,.28);
+      margin-right: 14px;
     }
-    .showcase {
-      border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(31,45,52,.92), rgba(16,22,28,.92));
-      box-shadow: var(--shadow);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .arena {
-      aspect-ratio: 4 / 5;
-      padding: 24px;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      gap: 18px;
-      background:
-        linear-gradient(135deg, rgba(101,209,180,.14), transparent 40%),
-        linear-gradient(315deg, rgba(242,185,95,.16), transparent 45%),
-        #121b21;
-    }
-    .scorebar {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 14px;
-      align-items: center;
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .scorebar strong { color: var(--ink); }
-    .versus {
-      color: var(--gold);
-      font-weight: 900;
-      letter-spacing: .12em;
-    }
-    .tiles {
-      align-self: center;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      transform: rotate(-3deg);
-    }
-    .tile {
-      aspect-ratio: 3 / 4;
-      border-radius: 9px;
-      background: linear-gradient(180deg, #f7ead4, #bf9a6b);
-      border: 2px solid rgba(255,255,255,.18);
-      box-shadow: 0 12px 26px rgba(0,0,0,.22);
-      display: grid;
-      place-items: center;
-      color: #18222a;
-      font-weight: 900;
-    }
-    .tile:nth-child(2n) { transform: translateY(12px); }
-    .tile:nth-child(3n) { background: linear-gradient(180deg, #9fe6d3, #4e9d8b); }
-    .tile:nth-child(5n) { background: linear-gradient(180deg, #f3b2a8, #bc554d); }
-    .status {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 14px;
-      border-top: 1px solid var(--line);
-      padding-top: 16px;
-    }
-    section.band {
-      padding: 72px 0;
-      border-top: 1px solid var(--line);
-    }
-    .section-head {
-      max-width: 760px;
-      margin-bottom: 28px;
-    }
-    h2 {
-      margin: 0;
-      font-size: clamp(30px, 4vw, 52px);
-      line-height: 1;
-      letter-spacing: 0;
-    }
-    .section-head p {
-      color: var(--muted);
-      font-size: 18px;
-      line-height: 1.55;
-      margin: 16px 0 0;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-    .card {
+    .download-card {
       border: 1px solid var(--line);
       background: var(--panel);
       border-radius: 8px;
-      padding: 22px;
-      min-height: 180px;
+      padding: 26px;
     }
-    .card .icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
+    .credit-art {
       display: grid;
-      place-items: center;
-      background: rgba(101,209,180,.14);
-      color: var(--jade);
-      font-weight: 900;
-      margin-bottom: 18px;
-    }
-    .card h3 {
-      margin: 0 0 10px;
-      font-size: 20px;
-    }
-    .card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.52;
-    }
-    .install {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
       gap: 16px;
-      align-items: stretch;
+      margin-bottom: 22px;
     }
-    .steps {
-      border: 1px solid var(--line);
-      background: var(--panel-strong);
-      border-radius: 8px;
-      padding: 26px;
+    .credit-art img {
+      display: block;
+      width: 100%;
+      height: auto;
     }
-    ol {
-      margin: 18px 0 0;
-      padding-left: 22px;
-      color: var(--muted);
-      line-height: 1.7;
+    .credit-art .made-for {
+      padding: 4px 0;
     }
-    .release {
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.05);
-      border-radius: 16px;
-      padding: 26px;
+    .download-card h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
     }
-    .release p {
-      color: var(--muted);
-      line-height: 1.6;
+    .download-card h3 {
+      margin: 24px 0 0;
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .download-card p {
       margin: 14px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .build-list {
+      margin: 22px 0;
+      display: grid;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .build-list div {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+    .build-list strong {
+      color: var(--ink);
+      font-weight: 750;
     }
     .direct {
       display: block;
       margin-top: 18px;
-      color: var(--cyan);
+      color: var(--jade);
       overflow-wrap: anywhere;
       text-decoration: none;
       line-height: 1.45;
+      font-size: 13px;
     }
     .direct:hover { text-decoration: underline; }
-    .contact {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 24px;
-      align-items: center;
-      border: 1px solid var(--line);
-      background: linear-gradient(135deg, rgba(101,209,180,.12), rgba(242,185,95,.10));
-      border-radius: 8px;
-      padding: 30px;
-    }
-    .contact p {
-      color: var(--muted);
-      margin: 12px 0 0;
-      line-height: 1.6;
-    }
     footer {
       padding: 28px 0 42px;
       color: var(--muted);
@@ -1176,131 +1191,91 @@ function renderSymbiosisLandingPage() {
       flex-wrap: wrap;
     }
     @media (max-width: 880px) {
-      .hero, .install, .contact { grid-template-columns: 1fr; }
-      .hero { padding-top: 36px; }
-      .grid { grid-template-columns: 1fr; }
-      .navlinks { display: none; }
+      .hero {
+        grid-template-columns: 1fr;
+        min-height: 0;
+        padding-top: 54px;
+      }
     }
     @media (max-width: 560px) {
-      .shell { width: min(100% - 22px, 1160px); }
+      .shell { width: min(100% - 22px, 1040px); }
+      .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
+      .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
+      .navlinks { gap: 14px; }
       .button { width: 100%; }
-      .arena { padding: 16px; }
-      .tiles { gap: 8px; }
-      section.band { padding: 52px 0; }
+      .build-list div { display: grid; gap: 4px; }
+      .version span + span::before { display: none; }
     }
   </style>
 </head>
 <body>
   <header>
     <div class="shell nav">
-      <a class="brand" href="#top" aria-label="DLSymbiosis home">
-        <span class="mark">DL</span>
-        <span>DLSymbiosis</span>
+      <a class="brand" href="${escapeHtml(withLangPath("/", locale))}" aria-label="${escapeHtml(copy.homeLabel)}">
+        <img src="${escapeHtml(logoUrl)}" alt="DLSymbiosis" width="1187" height="188">
       </a>
-      <nav class="navlinks" aria-label="Primary navigation">
-        <a href="#features">Features</a>
-        <a href="#install">Install</a>
-        <a href="/changelog">Changelog</a>
-        <a href="#contact">Contact</a>
-      </nav>
+      <div class="nav-right">
+        <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
+          <a href="${escapeHtml(apkUrl)}">${escapeHtml(copy.download)}</a>
+          <a href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.updates)}</a>
+          <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(copy.contact)}</a>
+        </nav>
+        <nav class="lang-switch" aria-label="Language">
+          <a class="${locale === "en" ? "active" : ""}" href="/?lang=en" lang="en">EN</a>
+          <a class="${locale === "ru" ? "active" : ""}" href="/?lang=ru" lang="ru">RU</a>
+          <a class="${locale === "tr" ? "active" : ""}" href="/?lang=tr" lang="tr">TR</a>
+        </nav>
+      </div>
     </div>
   </header>
   <main id="top">
     <section class="shell hero">
       <div>
-        <div class="eyebrow">Mahjong Battle for Android</div>
-        <h1>Build your profile. Pick your fighter. Win the board.</h1>
-        <p class="lead">DLSymbiosis turns classic tile matching into a battle arena with characters, progression, online accounts, ranked matchmaking, and local Wi-Fi duels.</p>
+        <div class="eyebrow">${escapeHtml(copy.eyebrow)}</div>
+        <img class="hero-logo" src="${escapeHtml(logoUrl)}" alt="DLSymbiosis" width="1187" height="188">
+        <p class="lead">${escapeHtml(copy.lead)}</p>
         <div class="actions">
-          <a class="button primary" href="${escapeHtml(apkUrl)}">Download Android APK</a>
-          <a class="button secondary" href="#install">Installation guide</a>
-          <a class="button secondary" href="/changelog">Update history</a>
+          <a class="button primary" href="${escapeHtml(apkUrl)}">${escapeHtml(copy.downloadApk)}</a>
+          <a class="button secondary" href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.updates)}</a>
         </div>
         <div class="version">
-          <span class="pill">Version ${escapeHtml(versionName)}${versionCode ? ` / ${escapeHtml(versionCode)}` : ""}</span>
-          <span class="pill">${escapeHtml(formatBytes(sizeBytes))}</span>
-          <span class="pill">Updated ${escapeHtml(new Date(updatedAt).toLocaleDateString("en-GB"))}</span>
+          <span>${escapeHtml(copy.version)} ${escapeHtml(versionName)}${versionCode ? ` (${escapeHtml(versionCode)})` : ""}</span>
+          <span>${escapeHtml(formatBytes(sizeBytes))}</span>
+          <span>${escapeHtml(copy.updated)} ${escapeHtml(new Date(updatedAt).toLocaleDateString(copy.htmlLang))}</span>
         </div>
       </div>
-      <div class="showcase" aria-label="Mahjong battle preview">
-        <div class="arena">
-          <div class="scorebar">
-            <span><strong>You</strong><br>Wi-Fi ready</span>
-            <span class="versus">VS</span>
-            <span style="text-align:right"><strong>Opponent</strong><br>Ranked ready</span>
+      <aside class="download-card" aria-label="${escapeHtml(copy.buildLabel)}">
+        <div class="credit-art">
+          <img class="made-for" src="${escapeHtml(madeForUrl)}" alt="${escapeHtml(copy.madeForAlt)}" width="1260" height="264">
+          <img src="${escapeHtml(devCreditUrl)}" alt="${escapeHtml(copy.devAlt)}" width="1173" height="489">
+        </div>
+        <h2>${escapeHtml(copy.latestBuild)}</h2>
+        <p>${escapeHtml(releaseNotes)}</p>
+        <div class="build-list">
+          <div>
+            <span>${escapeHtml(copy.platform)}</span>
+            <strong>${escapeHtml(copy.androidApk)}</strong>
           </div>
-          <div class="tiles">
-            <span class="tile">I</span><span class="tile">II</span><span class="tile">III</span><span class="tile">IV</span>
-            <span class="tile">A</span><span class="tile">B</span><span class="tile">C</span><span class="tile">D</span>
-            <span class="tile">F</span><span class="tile">W</span><span class="tile">T</span><span class="tile">G</span>
+          <div>
+            <span>${escapeHtml(copy.mode)}</span>
+            <strong>${escapeHtml(copy.onlineWifi)}</strong>
           </div>
-          <div class="status">
-            <span>Local Wi-Fi Battle</span>
-            <span>Online Profiles</span>
+          <div>
+            <span>${escapeHtml(copy.support)}</span>
+            <strong>${escapeHtml(supportEmail)}</strong>
           </div>
         </div>
-      </div>
-    </section>
-    <section class="band" id="features">
-      <div class="shell">
-        <div class="section-head">
-          <h2>What is inside</h2>
-          <p>Fast matches, character choices, account progress, and multiplayer systems are being built into one Android experience.</p>
-        </div>
-        <div class="grid">
-          <article class="card">
-            <div class="icon">01</div>
-            <h3>Battle Mahjong</h3>
-            <p>Clear matching tiles while your character turns successful pairs into pressure against the opponent.</p>
-          </article>
-          <article class="card">
-            <div class="icon">02</div>
-            <h3>Wi-Fi Battle</h3>
-            <p>Create a room on the same local network, let another player join, and start a direct player-versus-player match.</p>
-          </article>
-          <article class="card">
-            <div class="icon">03</div>
-            <h3>Profiles and Progress</h3>
-            <p>Keep your player profile, character selection, rank information, rewards, and battle history connected to your account.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-    <section class="band" id="install">
-      <div class="shell install">
-        <div class="steps">
-          <h2>Install on Android</h2>
-          <ol>
-            <li>Download the APK from this page.</li>
-            <li>Open the file on your Android phone.</li>
-            <li>Allow installation from your browser or file manager if Android asks.</li>
-            <li>Install, launch, and sign in or create your profile.</li>
-          </ol>
-        </div>
-        <div class="release">
-          <h2>Latest build</h2>
-          <p>${escapeHtml(releaseNotes)}</p>
-          <div class="actions">
-            <a class="button primary" href="${escapeHtml(apkUrl)}">Download APK</a>
-          </div>
-          <a class="direct" href="${escapeHtml(apkUrl)}">${escapeHtml(apkUrl)}</a>
-        </div>
-      </div>
-    </section>
-    <section class="band" id="contact">
-      <div class="shell contact">
-        <div>
-          <h2>Contact us</h2>
-          <p>Questions, bugs, test feedback, or partnership messages can be sent to our support mailbox. We read player reports and use them for the next Android builds.</p>
-        </div>
-        <a class="button secondary" href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>
-      </div>
+        <a class="button primary" href="${escapeHtml(apkUrl)}">${escapeHtml(copy.downloadApk)}</a>
+        <a class="direct" href="${escapeHtml(apkUrl)}">${escapeHtml(apkUrl)}</a>
+        <h3>${escapeHtml(copy.creditsLabel)}</h3>
+        <p>${escapeHtml(copy.creditsText)}</p>
+      </aside>
     </section>
   </main>
   <footer>
     <div class="shell">
       <span>(c) ${new Date().getFullYear()} DLSymbiosis</span>
-      <span>Android APK distribution / ${escapeHtml("dlsymbiosis.com")}</span>
+      <span><a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a></span>
     </div>
   </footer>
 </body>
@@ -2456,11 +2431,11 @@ ensureSchema()
   .catch((err) => console.error("Profile schema failed", err));
 
 app.get("/", (req, res) => {
-  res.type("html").send(renderSymbiosisLandingPage());
+  res.type("html").send(renderSymbiosisLandingPage(req));
 });
 
 app.get("/download", (req, res) => {
-  res.type("html").send(renderSymbiosisLandingPage());
+  res.type("html").send(renderSymbiosisLandingPage(req));
 });
 
 app.get("/changelog", (req, res) => {
