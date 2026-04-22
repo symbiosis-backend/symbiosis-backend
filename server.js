@@ -2511,11 +2511,13 @@ app.get("/updates/android/status", (req, res) => {
 });
 
 app.get("/updates/changelog", (req, res) => {
+  const entries = getChangelogEntries();
+  const latest = entries[0] || {};
   res.json({
     success: true,
-    latestVersion: ANDROID_EMBEDDED_VERSION_NAME,
-    latestVersionCode: ANDROID_EMBEDDED_VERSION_CODE,
-    entries: getChangelogEntries(),
+    latestVersion: latest.version || ANDROID_EMBEDDED_VERSION_NAME,
+    latestVersionCode: latest.versionCode || ANDROID_EMBEDDED_VERSION_CODE,
+    entries,
     checkedAt: new Date().toISOString(),
   });
 });
