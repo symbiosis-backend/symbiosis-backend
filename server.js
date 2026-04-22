@@ -934,9 +934,10 @@ function renderSymbiosisLandingPage(req) {
   const pageTitle = "DLSymbiosis - Mahjong Battle";
   const locale = getLandingLocale(req);
   const copy = LANDING_COPY[locale] || LANDING_COPY.en;
-  const logoUrl = "/downloads/SymbiosisLogo.png";
-  const devCreditUrl = "/downloads/DevelopmentAndDesign.png";
-  const madeForUrl = "/downloads/MadeForDynastyLegacy.png";
+  const assetBaseUrl = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/main/downloads";
+  const logoUrl = `${assetBaseUrl}/SymbiosisLogo.png`;
+  const devCreditUrl = `${assetBaseUrl}/DevelopmentAndDesign.png`;
+  const madeForUrl = `${assetBaseUrl}/MadeForDynastyLegacy.png`;
 
   return `<!doctype html>
 <html lang="${escapeHtml(copy.htmlLang)}">
@@ -947,7 +948,7 @@ function renderSymbiosisLandingPage(req) {
   <meta name="description" content="${escapeHtml(copy.metaDescription)}">
   <meta property="og:title" content="${escapeHtml(pageTitle)}">
   <meta property="og:description" content="${escapeHtml(copy.ogDescription)}">
-  <meta property="og:image" content="${escapeHtml(`${baseUrl}${logoUrl}`)}">
+  <meta property="og:image" content="${escapeHtml(logoUrl)}">
   <link rel="icon" type="image/png" href="${escapeHtml(logoUrl)}">
   <title>${escapeHtml(pageTitle)}</title>
   <style>
