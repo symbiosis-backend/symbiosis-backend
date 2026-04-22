@@ -152,11 +152,64 @@ function readBoolEnv(name, fallback) {
   return fallback;
 }
 
+function getPublicBaseUrl() {
+  return (process.env.PUBLIC_BASE_URL || "http://91.99.176.77:8080").replace(/\/+$/, "");
+}
+
+function getFileInfo(relativePath) {
+  const filePath = path.join(__dirname, "downloads", relativePath);
+  try {
+    const stat = fs.statSync(filePath);
+    return {
+      exists: stat.isFile(),
+      sizeBytes: stat.isFile() ? stat.size : 0,
+      updatedAt: stat.mtime.toISOString(),
+    };
+  } catch (_) {
+    return {
+      exists: false,
+      sizeBytes: 0,
+      updatedAt: null,
+    };
+  }
+}
+
+function getDownloadsStatus() {
+  const apk = getFileInfo("symbiosis-latest.apk");
+  const manifest = getFileInfo("android-update.json");
+  const addressablesDir = path.join(__dirname, "downloads", "addressables", "Android");
+  let addressableFiles = [];
+
+  try {
+    addressableFiles = fs
+      .readdirSync(addressablesDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .sort();
+  } catch (_) {
+    addressableFiles = [];
+  }
+
+  return {
+    success: true,
+    downloadsPath: path.join(__dirname, "downloads"),
+    apk,
+    manifest,
+    addressables: {
+      exists: fs.existsSync(addressablesDir),
+      fileCount: addressableFiles.length,
+      files: addressableFiles.slice(-20),
+    },
+    checkedAt: new Date().toISOString(),
+  };
+}
+
 function getAndroidUpdateManifest() {
   const filePath = path.join(__dirname, "downloads", "android-update.json");
   const latestVersionCode = readIntEnv("ANDROID_LATEST_VERSION_CODE", 1);
   const minimumVersionCode = readIntEnv("ANDROID_MIN_VERSION_CODE", 1);
-  const updateUrl = process.env.ANDROID_UPDATE_URL || "http://91.99.176.77:8080/downloads/symbiosis-latest.apk";
+  const apk = getFileInfo("symbiosis-latest.apk");
+  const updateUrl = process.env.ANDROID_UPDATE_URL || `${getPublicBaseUrl()}/downloads/symbiosis-latest.apk`;
   const fallback = {
     success: true,
     platform: "android",
@@ -165,6 +218,8 @@ function getAndroidUpdateManifest() {
     minimumVersionCode,
     forceUpdate: readBoolEnv("ANDROID_FORCE_UPDATE", false),
     updateUrl,
+    apkAvailable: apk.exists,
+    apkSizeBytes: apk.sizeBytes,
     releaseNotes: process.env.ANDROID_RELEASE_NOTES || "A new Symbiosis build is available.",
     checkedAt: new Date().toISOString(),
   };
@@ -875,6 +930,10 @@ app.post("/register", registerDynastyProfile);
 
 app.get("/updates/android", (req, res) => {
   res.json(getAndroidUpdateManifest());
+});
+
+app.get("/updates/android/status", (req, res) => {
+  res.json(getDownloadsStatus());
 });
 
 app.get("/content/characters", (req, res) => {
