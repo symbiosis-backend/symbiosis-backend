@@ -30,12 +30,12 @@ const SEED_TEST_NICKNAME = process.env.SEED_TEST_NICKNAME || "TestPlayer";
 const SEED_TEST_PUBLIC_PLAYER_ID = process.env.SEED_TEST_PUBLIC_PLAYER_ID || "MB-TEST0001";
 const RANKED_QUEUE_TIMEOUT_SECONDS = readIntEnv("RANKED_QUEUE_TIMEOUT_SECONDS", 90);
 const RANKED_MATCH_TTL_SECONDS = readIntEnv("RANKED_MATCH_TTL_SECONDS", 60 * 60 * 3);
-const ANDROID_EMBEDDED_VERSION_NAME = "1.0.5";
-const ANDROID_EMBEDDED_VERSION_CODE = 100005;
+const ANDROID_EMBEDDED_VERSION_NAME = "1.0.6";
+const ANDROID_EMBEDDED_VERSION_CODE = 100006;
 const ANDROID_EMBEDDED_APK_URL = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/main/downloads/symbiosis-latest.apk";
-const ANDROID_EMBEDDED_APK_SHA256 = "9d89239f8e9d267f18e2ad7e961b76b69c0cf0d082be24d141e848a03efbdae6";
-const ANDROID_EMBEDDED_APK_SIZE_BYTES = 73519461;
-const ANDROID_EMBEDDED_RELEASE_NOTES = "Full online ranked matchmaking through the public server with authoritative board generation and battle validation.";
+const ANDROID_EMBEDDED_APK_SHA256 = "a0e2aefdb7bd8526e5c807cb82c6a89ef9e0dbdc20b3b69604fe8bd602d31b29";
+const ANDROID_EMBEDDED_APK_SIZE_BYTES = 73519433;
+const ANDROID_EMBEDDED_RELEASE_NOTES = "Routes online services through HTTPS dlsymbiosis.com for reliable mobile network connections.";
 
 const rankedQueue = new Map();
 const rankedMatches = new Map();
