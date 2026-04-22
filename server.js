@@ -15,6 +15,9 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json());
+app.get("/downloads/symbiosis-latest.apk", (req, res) => {
+  res.redirect(302, ANDROID_EMBEDDED_APK_URL);
+});
 app.use("/downloads", express.static("downloads"));
 
 const ONLINE_WINDOW_SECONDS = readIntEnv("ONLINE_WINDOW_SECONDS", 120);
@@ -2129,7 +2132,7 @@ app.get("/download", (req, res) => {
 });
 
 app.get("/apk", (req, res) => {
-  res.redirect(302, "/downloads/symbiosis-latest.apk");
+  res.redirect(302, ANDROID_EMBEDDED_APK_URL);
 });
 
 app.get("/health", async (req, res) => {
