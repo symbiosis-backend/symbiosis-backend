@@ -318,6 +318,336 @@ function formatBytes(value) {
   return `${amount.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
+function getChangelogEntries() {
+  return [
+    {
+      version: "1.0.7",
+      versionCode: 100007,
+      date: "2026-04-22",
+      title: "Project Chronicle",
+      summary: "Added an update history page on the website and an in-game changelog window so players can follow how Symbiosis grows.",
+      changes: [
+        "New public changelog page on dlsymbiosis.com.",
+        "New in-game Updates button for the main menus and lobbies.",
+        "The game reads changelog entries from the server, with an offline fallback."
+      ]
+    },
+    {
+      version: "1.0.6",
+      versionCode: 100006,
+      date: "2026-04-22",
+      title: "Reliable Online Connection",
+      summary: "Routed online services through HTTPS on dlsymbiosis.com to improve matchmaking and account access from different networks.",
+      changes: [
+        "Switched the game client from direct HTTP IP calls to HTTPS domain calls.",
+        "Updated the Android APK distribution manifest.",
+        "Fixed direct APK download routing."
+      ]
+    },
+    {
+      version: "1.0.5",
+      versionCode: 100005,
+      date: "2026-04-22",
+      title: "Online Ranked Matchmaking",
+      summary: "Added server-backed ranked battle search with authoritative match state and shared battle board validation.",
+      changes: [
+        "Players can enter ranked matchmaking and wait for an online opponent.",
+        "The server creates ranked matches and generates the battle board.",
+        "Tile picks, reveals, damage, and finish events are validated by the server."
+      ]
+    },
+    {
+      version: "1.0.4",
+      versionCode: 100004,
+      date: "2026-04-22",
+      title: "Local Wi-Fi Battle",
+      summary: "Added local network battles so two devices on the same Wi-Fi can find each other and play.",
+      changes: [
+        "Created local Wi-Fi room flow.",
+        "Added host and join logic for nearby devices.",
+        "Improved battle sync for local multiplayer rounds."
+      ]
+    },
+    {
+      version: "1.0.3",
+      versionCode: 100003,
+      date: "2026-04-21",
+      title: "Profiles, Friends, and Chat",
+      summary: "Expanded account systems so players can keep profile identity and communicate through the server.",
+      changes: [
+        "Added server profiles and account login flow.",
+        "Added friends and requests.",
+        "Added global chat support."
+      ]
+    },
+    {
+      version: "1.0.2",
+      versionCode: 100002,
+      date: "2026-04-20",
+      title: "Characters and Remote Content",
+      summary: "Moved character catalog data toward server-controlled content for easier balancing and updates.",
+      changes: [
+        "Added remote character catalog endpoint.",
+        "Connected battle character data to server content.",
+        "Prepared Android addressable content support."
+      ]
+    },
+    {
+      version: "1.0.1",
+      versionCode: 100001,
+      date: "2026-04-20",
+      title: "Android Updates",
+      summary: "Added APK update metadata and the first website download flow for Android builds.",
+      changes: [
+        "Added Android update manifest.",
+        "Added public APK download page.",
+        "Added release notes in the update prompt."
+      ]
+    },
+    {
+      version: "1.0.0",
+      versionCode: 100000,
+      date: "2026-04-20",
+      title: "First Public Android Build",
+      summary: "Published the first Android build foundation for Symbiosis Mahjong Battle.",
+      changes: [
+        "Packaged the Android APK.",
+        "Prepared the public website entry point.",
+        "Started the public build history."
+      ]
+    }
+  ];
+}
+
+function renderChangelogEntry(entry) {
+  const changes = Array.isArray(entry.changes) ? entry.changes : [];
+  return `<article class="timeline-item">
+    <div class="timeline-meta">
+      <span class="pill">Version ${escapeHtml(entry.version)}</span>
+      <span class="date">${escapeHtml(entry.date)}</span>
+    </div>
+    <h3>${escapeHtml(entry.title)}</h3>
+    <p>${escapeHtml(entry.summary)}</p>
+    <ul>${changes.map((change) => `<li>${escapeHtml(change)}</li>`).join("")}</ul>
+  </article>`;
+}
+
+function renderChangelogPage() {
+  const entries = getChangelogEntries();
+  const latest = entries[0];
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1014">
+  <meta name="description" content="DLSymbiosis update history and release notes.">
+  <title>DLSymbiosis Changelog</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1014;
+      --ink: #f6f1e7;
+      --muted: #b9c4ca;
+      --line: rgba(255,255,255,.14);
+      --panel: rgba(18,25,31,.86);
+      --gold: #f2b95f;
+      --jade: #65d1b4;
+      --cyan: #6bd9ee;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        linear-gradient(180deg, rgba(7,10,13,.44), rgba(7,10,13,.88)),
+        radial-gradient(circle at 82% 8%, rgba(101,209,180,.2), transparent 25rem),
+        radial-gradient(circle at 16% 20%, rgba(242,185,95,.16), transparent 24rem),
+        var(--bg);
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    .shell { width: min(980px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(18px);
+      background: rgba(11,16,20,.74);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-weight: 850;
+    }
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: #101418;
+      background: linear-gradient(135deg, var(--gold), var(--jade));
+      font-weight: 900;
+    }
+    .navlinks {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .navlinks a { text-decoration: none; white-space: nowrap; }
+    .navlinks a:hover { color: var(--ink); }
+    .hero { padding: 72px 0 42px; }
+    .eyebrow {
+      color: var(--gold);
+      font-weight: 850;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 8vw, 78px);
+      line-height: .94;
+      letter-spacing: 0;
+    }
+    .lead {
+      max-width: 720px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 20px;
+      line-height: 1.56;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 28px;
+    }
+    .button {
+      min-height: 56px;
+      padding: 0 22px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-weight: 850;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+    }
+    .button.primary {
+      color: #0d1114;
+      background: linear-gradient(180deg, #ffe0a4, var(--gold));
+    }
+    .timeline {
+      padding: 22px 0 76px;
+      display: grid;
+      gap: 16px;
+    }
+    .timeline-item {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    .timeline-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.045);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--jade);
+      font-weight: 800;
+    }
+    .date { color: var(--muted); }
+    h3 {
+      margin: 0;
+      font-size: 26px;
+      letter-spacing: 0;
+    }
+    p {
+      color: var(--muted);
+      line-height: 1.58;
+      margin: 12px 0 0;
+    }
+    ul {
+      margin: 16px 0 0;
+      padding-left: 22px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    li::marker { color: var(--gold); }
+    footer {
+      padding: 28px 0 42px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 22px, 980px); }
+      .button { width: 100%; }
+      .navlinks { display: none; }
+      .hero { padding-top: 46px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell nav">
+      <a class="brand" href="/" aria-label="DLSymbiosis home">
+        <span class="mark">DL</span>
+        <span>DLSymbiosis</span>
+      </a>
+      <nav class="navlinks" aria-label="Primary navigation">
+        <a href="/">Home</a>
+        <a href="/download">Download</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <section class="shell hero">
+      <div class="eyebrow">Development History</div>
+      <h1>DLSymbiosis Changelog</h1>
+      <p class="lead">A living record of what changed in each Android build, from the first public APK to online ranked battles and future systems.</p>
+      <div class="actions">
+        <a class="button primary" href="/download">Download latest APK</a>
+        <a class="button" href="/updates/changelog">Open JSON feed</a>
+      </div>
+      <p class="lead">Latest: ${escapeHtml(latest.version)} - ${escapeHtml(latest.title)}</p>
+    </section>
+    <section class="shell timeline">
+      ${entries.map(renderChangelogEntry).join("")}
+    </section>
+  </main>
+  <footer>
+    <div class="shell">(c) ${new Date().getFullYear()} DLSymbiosis / Project changelog</div>
+  </footer>
+</body>
+</html>`;
+}
+
 function renderAndroidDownloadPage() {
   const manifest = getAndroidUpdateManifest();
   const baseUrl = getPublicBaseUrl();
@@ -870,6 +1200,7 @@ function renderSymbiosisLandingPage() {
       <nav class="navlinks" aria-label="Primary navigation">
         <a href="#features">Features</a>
         <a href="#install">Install</a>
+        <a href="/changelog">Changelog</a>
         <a href="#contact">Contact</a>
       </nav>
     </div>
@@ -883,6 +1214,7 @@ function renderSymbiosisLandingPage() {
         <div class="actions">
           <a class="button primary" href="${escapeHtml(apkUrl)}">Download Android APK</a>
           <a class="button secondary" href="#install">Installation guide</a>
+          <a class="button secondary" href="/changelog">Update history</a>
         </div>
         <div class="version">
           <span class="pill">Version ${escapeHtml(versionName)}${versionCode ? ` / ${escapeHtml(versionCode)}` : ""}</span>
@@ -2131,6 +2463,10 @@ app.get("/download", (req, res) => {
   res.type("html").send(renderSymbiosisLandingPage());
 });
 
+app.get("/changelog", (req, res) => {
+  res.type("html").send(renderChangelogPage());
+});
+
 app.get("/apk", (req, res) => {
   res.redirect(302, ANDROID_EMBEDDED_APK_URL);
 });
@@ -2172,6 +2508,16 @@ app.get("/updates/android", (req, res) => {
 
 app.get("/updates/android/status", (req, res) => {
   res.json(getDownloadsStatus());
+});
+
+app.get("/updates/changelog", (req, res) => {
+  res.json({
+    success: true,
+    latestVersion: ANDROID_EMBEDDED_VERSION_NAME,
+    latestVersionCode: ANDROID_EMBEDDED_VERSION_CODE,
+    entries: getChangelogEntries(),
+    checkedAt: new Date().toISOString(),
+  });
 });
 
 app.get("/content/characters", (req, res) => {
