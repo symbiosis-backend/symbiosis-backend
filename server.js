@@ -28,6 +28,11 @@ const SEED_TEST_DYNASTY_NAME = process.env.SEED_TEST_DYNASTY_NAME || "Test Dynas
 const SEED_TEST_DYNASTY_ID = process.env.SEED_TEST_DYNASTY_ID || "DY-TEST-000001";
 const SEED_TEST_NICKNAME = process.env.SEED_TEST_NICKNAME || "TestPlayer";
 const SEED_TEST_PUBLIC_PLAYER_ID = process.env.SEED_TEST_PUBLIC_PLAYER_ID || "MB-TEST0001";
+const RANKED_QUEUE_TIMEOUT_SECONDS = readIntEnv("RANKED_QUEUE_TIMEOUT_SECONDS", 90);
+const RANKED_MATCH_TTL_SECONDS = readIntEnv("RANKED_MATCH_TTL_SECONDS", 60 * 60 * 3);
+
+const rankedQueue = new Map();
+const rankedMatches = new Map();
 
 const pool = new Pool({
   user: "game",
@@ -91,6 +96,14 @@ function normalizeDynastyName(value) {
 
 function normalizeLookup(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeRankTier(value) {
+  return String(value || "Unranked").trim().replace(/\s+/g, " ").slice(0, 32) || "Unranked";
+}
+
+function clampRankPoints(value) {
+  return Math.max(0, Math.min(999999, Math.floor(Number(value) || 0)));
 }
 
 function normalizeChatChannel(value) {
@@ -230,17 +243,707 @@ function getAndroidUpdateManifest() {
     }
 
     const fileManifest = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    const resolvedVersionName = fileManifest.versionName || fileManifest.latestVersion || fallback.latestVersion;
+    const resolvedVersionCode = Number(fileManifest.versionCode || fileManifest.latestVersionCode || fallback.latestVersionCode);
+    const resolvedUpdateUrl = fileManifest.apkUrl || fileManifest.updateUrl || fallback.updateUrl;
     return {
       ...fallback,
       ...fileManifest,
       success: true,
       platform: "android",
+      latestVersion: resolvedVersionName,
+      latestVersionCode: Number.isFinite(resolvedVersionCode) ? resolvedVersionCode : fallback.latestVersionCode,
+      updateUrl: resolvedUpdateUrl,
+      apkUrl: resolvedUpdateUrl,
       checkedAt: new Date().toISOString(),
     };
   } catch (err) {
     console.warn("Android update manifest read failed", err.message);
     return fallback;
   }
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes <= 0) {
+    return "Unknown size";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  let amount = bytes;
+  let unitIndex = 0;
+  while (amount >= 1024 && unitIndex < units.length - 1) {
+    amount /= 1024;
+    unitIndex++;
+  }
+
+  return `${amount.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function renderAndroidDownloadPage() {
+  const manifest = getAndroidUpdateManifest();
+  const baseUrl = getPublicBaseUrl();
+  const apkUrl = manifest.apkUrl || manifest.updateUrl || `${baseUrl}/downloads/symbiosis-latest.apk`;
+  const versionName = manifest.versionName || manifest.latestVersion || "latest";
+  const versionCode = manifest.versionCode || manifest.latestVersionCode || "";
+  const sizeBytes = manifest.sizeBytes || manifest.apkSizeBytes || 0;
+  const releaseNotes = manifest.releaseNotes || "Latest Android build.";
+  const updatedAt = manifest.updatedAt || manifest.checkedAt || new Date().toISOString();
+  const pageTitle = `Symbiosis Android ${versionName}`;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0d1117">
+  <meta property="og:title" content="${escapeHtml(pageTitle)}">
+  <meta property="og:description" content="Download the latest Symbiosis Android APK.">
+  <title>${escapeHtml(pageTitle)}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117;
+      --panel: #151b23;
+      --text: #f8fafc;
+      --muted: #a7b0be;
+      --accent: #58c4dc;
+      --accent2: #f0b35a;
+      --line: rgba(255,255,255,.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at 20% 10%, rgba(88,196,220,.18), transparent 32rem), var(--bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+    main {
+      width: min(720px, 100%);
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(21,27,35,.96), rgba(15,20,27,.96));
+      box-shadow: 0 24px 80px rgba(0,0,0,.38);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+    .hero {
+      padding: 34px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand {
+      color: var(--accent2);
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 8vw, 58px);
+      line-height: .96;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+    }
+    .content {
+      padding: 28px 34px 34px;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat {
+      background: rgba(255,255,255,.045);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      min-width: 0;
+    }
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 7px;
+    }
+    .value {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .button {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 58px;
+      width: 100%;
+      border-radius: 12px;
+      color: #071014;
+      background: linear-gradient(180deg, #7de1f2, var(--accent));
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 12px 32px rgba(88,196,220,.28);
+    }
+    .notes {
+      margin-top: 20px;
+      color: var(--muted);
+      line-height: 1.55;
+      padding: 16px;
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--line);
+    }
+    .direct {
+      display: block;
+      margin-top: 18px;
+      color: var(--accent);
+      overflow-wrap: anywhere;
+      text-align: center;
+    }
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      .hero, .content { padding: 24px; }
+      .meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="brand">Symbiosis</div>
+      <h1>Android APK</h1>
+      <p class="subtitle">Download the latest Android build and install it on your device.</p>
+    </section>
+    <section class="content">
+      <div class="meta">
+        <div class="stat">
+          <div class="label">Version</div>
+          <div class="value">${escapeHtml(versionName)}${versionCode ? ` (${escapeHtml(versionCode)})` : ""}</div>
+        </div>
+        <div class="stat">
+          <div class="label">Size</div>
+          <div class="value">${escapeHtml(formatBytes(sizeBytes))}</div>
+        </div>
+        <div class="stat">
+          <div class="label">Updated</div>
+          <div class="value">${escapeHtml(new Date(updatedAt).toLocaleDateString("en-GB"))}</div>
+        </div>
+      </div>
+      <a class="button" href="${escapeHtml(apkUrl)}">Download APK</a>
+      <div class="notes">${escapeHtml(releaseNotes)}</div>
+      <a class="direct" href="${escapeHtml(apkUrl)}">${escapeHtml(apkUrl)}</a>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
+function renderSymbiosisLandingPage() {
+  const manifest = getAndroidUpdateManifest();
+  const baseUrl = getPublicBaseUrl();
+  const apkUrl = manifest.apkUrl || manifest.updateUrl || `${baseUrl}/downloads/symbiosis-latest.apk`;
+  const versionName = manifest.versionName || manifest.latestVersion || "latest";
+  const versionCode = manifest.versionCode || manifest.latestVersionCode || "";
+  const sizeBytes = manifest.sizeBytes || manifest.apkSizeBytes || 0;
+  const releaseNotes = manifest.releaseNotes || "Latest Android build.";
+  const updatedAt = manifest.updatedAt || manifest.checkedAt || new Date().toISOString();
+  const supportEmail = "support@dlsymbiosis.com";
+  const pageTitle = "DLSymbiosis - Mahjong Battle";
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1014">
+  <meta name="description" content="Download DLSymbiosis, a Mahjong Battle game for Android with online profiles, ranked battles, and local Wi-Fi duels.">
+  <meta property="og:title" content="${escapeHtml(pageTitle)}">
+  <meta property="og:description" content="Mahjong Battle for Android. Download the latest APK.">
+  <title>${escapeHtml(pageTitle)}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1014;
+      --ink: #f6f1e7;
+      --muted: #b9c4ca;
+      --soft: rgba(255,255,255,.08);
+      --line: rgba(255,255,255,.14);
+      --panel: rgba(18,25,31,.84);
+      --panel-strong: rgba(24,35,42,.96);
+      --gold: #f2b95f;
+      --jade: #65d1b4;
+      --red: #d95045;
+      --cyan: #6bd9ee;
+      --shadow: 0 26px 90px rgba(0,0,0,.36);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        linear-gradient(180deg, rgba(7,10,13,.48), rgba(7,10,13,.86)),
+        radial-gradient(circle at 78% 8%, rgba(101,209,180,.22), transparent 25rem),
+        radial-gradient(circle at 12% 22%, rgba(217,80,69,.18), transparent 25rem),
+        #0b1014;
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    .shell { width: min(1160px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(18px);
+      background: rgba(11,16,20,.72);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-weight: 850;
+      letter-spacing: .02em;
+    }
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: #101418;
+      background: linear-gradient(135deg, var(--gold), var(--jade));
+      font-weight: 900;
+      box-shadow: 0 10px 30px rgba(101,209,180,.22);
+    }
+    .navlinks {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .navlinks a {
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .navlinks a:hover { color: var(--ink); }
+    .hero {
+      min-height: calc(100vh - 72px);
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr);
+      align-items: center;
+      gap: 44px;
+      padding: 52px 0 72px;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--gold);
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-size: 12px;
+      margin-bottom: 18px;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 42px;
+      height: 2px;
+      background: var(--gold);
+    }
+    h1 {
+      margin: 0;
+      max-width: 760px;
+      font-size: clamp(46px, 7vw, 92px);
+      line-height: .92;
+      letter-spacing: 0;
+    }
+    .lead {
+      max-width: 660px;
+      margin: 24px 0 0;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.55;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 34px;
+    }
+    .button {
+      min-height: 58px;
+      padding: 0 24px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-weight: 850;
+      border: 1px solid var(--line);
+    }
+    .button.primary {
+      color: #0d1114;
+      background: linear-gradient(180deg, #ffe0a4, var(--gold));
+      border-color: rgba(255,255,255,.16);
+      box-shadow: 0 18px 46px rgba(242,185,95,.25);
+    }
+    .button.secondary {
+      color: var(--ink);
+      background: rgba(255,255,255,.06);
+    }
+    .version {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .pill {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.045);
+      border-radius: 999px;
+      padding: 8px 12px;
+    }
+    .showcase {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(31,45,52,.92), rgba(16,22,28,.92));
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .arena {
+      aspect-ratio: 4 / 5;
+      padding: 24px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      background:
+        linear-gradient(135deg, rgba(101,209,180,.14), transparent 40%),
+        linear-gradient(315deg, rgba(242,185,95,.16), transparent 45%),
+        #121b21;
+    }
+    .scorebar {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 14px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .scorebar strong { color: var(--ink); }
+    .versus {
+      color: var(--gold);
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+    .tiles {
+      align-self: center;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      transform: rotate(-3deg);
+    }
+    .tile {
+      aspect-ratio: 3 / 4;
+      border-radius: 9px;
+      background: linear-gradient(180deg, #f7ead4, #bf9a6b);
+      border: 2px solid rgba(255,255,255,.18);
+      box-shadow: 0 12px 26px rgba(0,0,0,.22);
+      display: grid;
+      place-items: center;
+      color: #18222a;
+      font-weight: 900;
+    }
+    .tile:nth-child(2n) { transform: translateY(12px); }
+    .tile:nth-child(3n) { background: linear-gradient(180deg, #9fe6d3, #4e9d8b); }
+    .tile:nth-child(5n) { background: linear-gradient(180deg, #f3b2a8, #bc554d); }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 14px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+    section.band {
+      padding: 72px 0;
+      border-top: 1px solid var(--line);
+    }
+    .section-head {
+      max-width: 760px;
+      margin-bottom: 28px;
+    }
+    h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+    .section-head p {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+      margin: 16px 0 0;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 22px;
+      min-height: 180px;
+    }
+    .card .icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: rgba(101,209,180,.14);
+      color: var(--jade);
+      font-weight: 900;
+      margin-bottom: 18px;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.52;
+    }
+    .install {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .steps {
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      border-radius: 8px;
+      padding: 26px;
+    }
+    ol {
+      margin: 18px 0 0;
+      padding-left: 22px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .release {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.05);
+      border-radius: 16px;
+      padding: 26px;
+    }
+    .release p {
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 14px 0 0;
+    }
+    .direct {
+      display: block;
+      margin-top: 18px;
+      color: var(--cyan);
+      overflow-wrap: anywhere;
+      text-decoration: none;
+      line-height: 1.45;
+    }
+    .direct:hover { text-decoration: underline; }
+    .contact {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(101,209,180,.12), rgba(242,185,95,.10));
+      border-radius: 8px;
+      padding: 30px;
+    }
+    .contact p {
+      color: var(--muted);
+      margin: 12px 0 0;
+      line-height: 1.6;
+    }
+    footer {
+      padding: 28px 0 42px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+    footer .shell {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 880px) {
+      .hero, .install, .contact { grid-template-columns: 1fr; }
+      .hero { padding-top: 36px; }
+      .grid { grid-template-columns: 1fr; }
+      .navlinks { display: none; }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 22px, 1160px); }
+      .button { width: 100%; }
+      .arena { padding: 16px; }
+      .tiles { gap: 8px; }
+      section.band { padding: 52px 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell nav">
+      <a class="brand" href="#top" aria-label="DLSymbiosis home">
+        <span class="mark">DL</span>
+        <span>DLSymbiosis</span>
+      </a>
+      <nav class="navlinks" aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </div>
+  </header>
+  <main id="top">
+    <section class="shell hero">
+      <div>
+        <div class="eyebrow">Mahjong Battle for Android</div>
+        <h1>Build your profile. Pick your fighter. Win the board.</h1>
+        <p class="lead">DLSymbiosis turns classic tile matching into a battle arena with characters, progression, online accounts, ranked matchmaking, and local Wi-Fi duels.</p>
+        <div class="actions">
+          <a class="button primary" href="${escapeHtml(apkUrl)}">Download Android APK</a>
+          <a class="button secondary" href="#install">Installation guide</a>
+        </div>
+        <div class="version">
+          <span class="pill">Version ${escapeHtml(versionName)}${versionCode ? ` / ${escapeHtml(versionCode)}` : ""}</span>
+          <span class="pill">${escapeHtml(formatBytes(sizeBytes))}</span>
+          <span class="pill">Updated ${escapeHtml(new Date(updatedAt).toLocaleDateString("en-GB"))}</span>
+        </div>
+      </div>
+      <div class="showcase" aria-label="Mahjong battle preview">
+        <div class="arena">
+          <div class="scorebar">
+            <span><strong>You</strong><br>Wi-Fi ready</span>
+            <span class="versus">VS</span>
+            <span style="text-align:right"><strong>Opponent</strong><br>Ranked ready</span>
+          </div>
+          <div class="tiles">
+            <span class="tile">I</span><span class="tile">II</span><span class="tile">III</span><span class="tile">IV</span>
+            <span class="tile">A</span><span class="tile">B</span><span class="tile">C</span><span class="tile">D</span>
+            <span class="tile">F</span><span class="tile">W</span><span class="tile">T</span><span class="tile">G</span>
+          </div>
+          <div class="status">
+            <span>Local Wi-Fi Battle</span>
+            <span>Online Profiles</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="band" id="features">
+      <div class="shell">
+        <div class="section-head">
+          <h2>What is inside</h2>
+          <p>Fast matches, character choices, account progress, and multiplayer systems are being built into one Android experience.</p>
+        </div>
+        <div class="grid">
+          <article class="card">
+            <div class="icon">01</div>
+            <h3>Battle Mahjong</h3>
+            <p>Clear matching tiles while your character turns successful pairs into pressure against the opponent.</p>
+          </article>
+          <article class="card">
+            <div class="icon">02</div>
+            <h3>Wi-Fi Battle</h3>
+            <p>Create a room on the same local network, let another player join, and start a direct player-versus-player match.</p>
+          </article>
+          <article class="card">
+            <div class="icon">03</div>
+            <h3>Profiles and Progress</h3>
+            <p>Keep your player profile, character selection, rank information, rewards, and battle history connected to your account.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+    <section class="band" id="install">
+      <div class="shell install">
+        <div class="steps">
+          <h2>Install on Android</h2>
+          <ol>
+            <li>Download the APK from this page.</li>
+            <li>Open the file on your Android phone.</li>
+            <li>Allow installation from your browser or file manager if Android asks.</li>
+            <li>Install, launch, and sign in or create your profile.</li>
+          </ol>
+        </div>
+        <div class="release">
+          <h2>Latest build</h2>
+          <p>${escapeHtml(releaseNotes)}</p>
+          <div class="actions">
+            <a class="button primary" href="${escapeHtml(apkUrl)}">Download APK</a>
+          </div>
+          <a class="direct" href="${escapeHtml(apkUrl)}">${escapeHtml(apkUrl)}</a>
+        </div>
+      </div>
+    </section>
+    <section class="band" id="contact">
+      <div class="shell contact">
+        <div>
+          <h2>Contact us</h2>
+          <p>Questions, bugs, test feedback, or partnership messages can be sent to our support mailbox. We read player reports and use them for the next Android builds.</p>
+        </div>
+        <a class="button secondary" href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="shell">
+      <span>(c) ${new Date().getFullYear()} DLSymbiosis</span>
+      <span>Android APK distribution / ${escapeHtml("dlsymbiosis.com")}</span>
+    </div>
+  </footer>
+</body>
+</html>`;
 }
 
 function getCharacterContentCatalog() {
@@ -428,6 +1131,32 @@ function mapFriendUser(row) {
     isFriend: !!row.is_friend,
     hasPendingOutgoing: !!row.has_pending_outgoing,
     hasPendingIncoming: !!row.has_pending_incoming,
+  };
+}
+
+function mapRankedPlayer(user, body = {}) {
+  return {
+    userId: user.id,
+    nickname: user.nickname || "Player",
+    publicPlayerId: user.public_player_id || "",
+    avatarId: Math.max(0, Math.floor(Number(user.avatar_id) || 0)),
+    rankTier: normalizeRankTier(body.rankTier),
+    rankPoints: clampRankPoints(body.rankPoints),
+  };
+}
+
+function mapRankedOpponent(player) {
+  if (!player) {
+    return null;
+  }
+
+  return {
+    id: String(player.userId),
+    displayName: player.nickname || "Player",
+    publicPlayerId: player.publicPlayerId || "",
+    avatarId: player.avatarId || 0,
+    rankTier: player.rankTier || "Unranked",
+    rankPoints: player.rankPoints || 0,
   };
 }
 
@@ -693,6 +1422,478 @@ async function findFriendTargetByNicknameOrId(userId, value) {
   return null;
 }
 
+function cleanupRankedMatchmaking() {
+  const now = Date.now();
+  const queueTtlMs = RANKED_QUEUE_TIMEOUT_SECONDS * 1000;
+  const matchTtlMs = RANKED_MATCH_TTL_SECONDS * 1000;
+
+  for (const [userId, entry] of rankedQueue.entries()) {
+    if (!entry || now - entry.updatedAt > queueTtlMs) {
+      rankedQueue.delete(userId);
+    }
+  }
+
+  for (const [matchId, match] of rankedMatches.entries()) {
+    if (!match || now - match.updatedAt > matchTtlMs) {
+      rankedMatches.delete(matchId);
+    }
+  }
+}
+
+function findActiveRankedMatchForUser(userId) {
+  for (const match of rankedMatches.values()) {
+    if (!match || match.finished) {
+      continue;
+    }
+
+    if (match.playerOne.userId === userId || match.playerTwo.userId === userId) {
+      return match;
+    }
+  }
+
+  return null;
+}
+
+function findQueuedRankedOpponent(userId, rankPoints) {
+  let best = null;
+  let bestDelta = Number.MAX_SAFE_INTEGER;
+
+  for (const entry of rankedQueue.values()) {
+    if (!entry || entry.player.userId === userId) {
+      continue;
+    }
+
+    const delta = Math.abs((entry.player.rankPoints || 0) - rankPoints);
+    if (delta < bestDelta) {
+      best = entry;
+      bestDelta = delta;
+    }
+  }
+
+  return best;
+}
+
+function createRankedMatch(playerOne, playerTwo) {
+  const match = {
+    id: crypto.randomBytes(12).toString("hex"),
+    seed: Math.floor(100000 + Math.random() * 900000),
+    playerOne,
+    playerTwo,
+    state: {
+      playerOne: createEmptyRankedBoardState(),
+      playerTwo: createEmptyRankedBoardState(),
+      playerOneHp: 10,
+      playerTwoHp: 10,
+      maxPlayerOneHp: 10,
+      maxPlayerTwoHp: 10,
+      damagePerPair: 1,
+    },
+    events: [],
+    nextSeq: 1,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    finished: false,
+  };
+
+  rankedMatches.set(match.id, match);
+  return match;
+}
+
+function createEmptyRankedBoardState() {
+  return {
+    initialized: false,
+    tiles: [],
+    firstRevealedIndex: -1,
+  };
+}
+
+function getRankedParticipant(match, userId) {
+  if (!match) {
+    return null;
+  }
+
+  if (match.playerOne.userId === userId) {
+    return { index: 1, player: match.playerOne, opponent: match.playerTwo };
+  }
+
+  if (match.playerTwo.userId === userId) {
+    return { index: 2, player: match.playerTwo, opponent: match.playerOne };
+  }
+
+  return null;
+}
+
+function createRankedMatchResponse(match, userId) {
+  const participant = getRankedParticipant(match, userId);
+  if (!participant) {
+    return { success: false, error: "Player is not in this match" };
+  }
+
+  return {
+    success: true,
+    matched: true,
+    matchId: match.id,
+    seed: match.seed,
+    playerIndex: participant.index,
+    opponent: mapRankedOpponent(participant.opponent),
+  };
+}
+
+function getRankedBoardState(match, playerIndex) {
+  if (!match || !match.state) {
+    return null;
+  }
+
+  return playerIndex === 1 ? match.state.playerOne : match.state.playerTwo;
+}
+
+function getRankedOpponentHpKey(playerIndex) {
+  return playerIndex === 1 ? "playerTwoHp" : "playerOneHp";
+}
+
+function getRankedMaxOpponentHpKey(playerIndex) {
+  return playerIndex === 1 ? "maxPlayerTwoHp" : "maxPlayerOneHp";
+}
+
+function normalizeRankedBoardTiles(tiles) {
+  if (!Array.isArray(tiles)) {
+    return [];
+  }
+
+  return tiles.slice(0, 256).map((tile, index) => ({
+    index,
+    id: String(tile && tile.id ? tile.id : "").slice(0, 64),
+    x: Math.floor(Number(tile && tile.x) || 0),
+    y: Math.floor(Number(tile && tile.y) || 0),
+    z: Math.floor(Number(tile && tile.z) || 0),
+    matched: false,
+    revealed: false,
+  }));
+}
+
+function normalizeRankedBoardSlots(slots) {
+  if (!Array.isArray(slots)) {
+    return [];
+  }
+
+  return slots.slice(0, 256).map((slot) => ({
+    x: Math.floor(Number(slot && slot.x) || 0),
+    y: Math.floor(Number(slot && slot.y) || 0),
+    z: Math.floor(Number(slot && slot.z) || 0),
+  }));
+}
+
+function normalizeRankedTilePool(tilePool) {
+  if (!Array.isArray(tilePool)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const result = [];
+  for (const item of tilePool) {
+    const id = String(item || "").trim().slice(0, 64);
+    if (!id || seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    result.push(id);
+  }
+
+  return result;
+}
+
+function shuffleWithSeed(list, seed) {
+  let state = Math.max(1, Math.floor(Number(seed) || 1)) >>> 0;
+  for (let i = list.length - 1; i > 0; i--) {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    const j = state % (i + 1);
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+}
+
+function generateRankedBoardTiles(slots, tilePool, seed, actorIndex) {
+  const usableCount = slots.length - (slots.length % 2);
+  if (usableCount < 2 || tilePool.length === 0) {
+    return [];
+  }
+
+  const pairIds = [];
+  let poolIndex = 0;
+  while (pairIds.length < usableCount) {
+    const id = tilePool[poolIndex % tilePool.length];
+    pairIds.push(id);
+    pairIds.push(id);
+    poolIndex++;
+  }
+
+  pairIds.length = usableCount;
+  shuffleWithSeed(pairIds, (seed || 1) + actorIndex * 100003);
+
+  return slots.slice(0, usableCount).map((slot, index) => ({
+    index,
+    id: pairIds[index],
+    x: slot.x,
+    y: slot.y,
+    z: slot.z,
+    matched: false,
+    revealed: false,
+  }));
+}
+
+function isRankedTileActive(tile) {
+  return !!tile && !tile.matched;
+}
+
+function isRankedTileFree(board, tile) {
+  if (!board || !tile || tile.matched) {
+    return false;
+  }
+
+  for (const other of board.tiles) {
+    if (!isRankedTileActive(other) || other.index === tile.index) {
+      continue;
+    }
+
+    if (other.z === tile.z + 1) {
+      const dx = Math.abs(other.x - tile.x);
+      const dy = Math.abs(other.y - tile.y);
+      if (dx <= 1 && dy <= 1) {
+        return false;
+      }
+    }
+  }
+
+  let left = false;
+  let right = false;
+
+  for (const other of board.tiles) {
+    if (!isRankedTileActive(other) || other.index === tile.index || other.z !== tile.z) {
+      continue;
+    }
+
+    const dx = other.x - tile.x;
+    const dy = Math.abs(other.y - tile.y);
+    if (dy !== 0) {
+      continue;
+    }
+
+    if (dx < 0 && Math.abs(dx) <= 1) {
+      left = true;
+    }
+
+    if (dx > 0 && dx <= 1) {
+      right = true;
+    }
+
+    if (left && right) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isRankedBoardCleared(board) {
+  return !!board && board.tiles.every((tile) => !isRankedTileActive(tile));
+}
+
+function pushRankedEvent(match, recipientIndex, payload) {
+  const event = {
+    seq: match.nextSeq++,
+    recipientIndex,
+    ...payload,
+    createdAt: new Date().toISOString(),
+  };
+
+  match.events.push(event);
+  if (match.events.length > 500) {
+    match.events.splice(0, match.events.length - 500);
+  }
+
+  match.updatedAt = Date.now();
+  return event;
+}
+
+function applyRankedBoardManifest(match, participant, body) {
+  const board = getRankedBoardState(match, participant.index);
+  if (!board) {
+    return { success: false, error: "Board state not found" };
+  }
+
+  if (board.initialized) {
+    return { success: true, alreadyInitialized: true };
+  }
+
+  let tiles = normalizeRankedBoardTiles(body.tiles);
+  if (tiles.length === 0) {
+    const slots = normalizeRankedBoardSlots(body.slots);
+    const tilePool = normalizeRankedTilePool(body.tilePool);
+    tiles = generateRankedBoardTiles(slots, tilePool, match.seed, participant.index);
+  }
+
+  if (tiles.length < 2) {
+    return { success: false, error: "Board manifest is empty" };
+  }
+
+  board.tiles = tiles;
+  board.firstRevealedIndex = -1;
+  board.initialized = true;
+
+  const maxHp = Math.max(1, Math.floor(Number(body.maxHp) || 10));
+  const damagePerPair = Math.max(1, Math.floor(Number(body.damagePerPair) || 1));
+
+  if (participant.index === 1) {
+    match.state.maxPlayerOneHp = maxHp;
+    match.state.playerOneHp = maxHp;
+  } else {
+    match.state.maxPlayerTwoHp = maxHp;
+    match.state.playerTwoHp = maxHp;
+  }
+
+  match.state.damagePerPair = Math.max(match.state.damagePerPair || 1, damagePerPair);
+  match.updatedAt = Date.now();
+
+  const boardPayload = {
+    type: "board",
+    actorIndex: participant.index,
+    tiles: tiles.map((tile) => ({
+      index: tile.index,
+      id: tile.id,
+      x: tile.x,
+      y: tile.y,
+      z: tile.z,
+    })),
+  };
+
+  pushRankedEvent(match, participant.index, boardPayload);
+  pushRankedEvent(match, participant.index === 1 ? 2 : 1, boardPayload);
+
+  return { success: true };
+}
+
+function applyRankedPick(match, participant, body) {
+  const board = getRankedBoardState(match, participant.index);
+  if (!board || !board.initialized) {
+    return { success: false, error: "Board is not ready" };
+  }
+
+  const tileIndex = Math.floor(Number(body.tileIndex));
+  const tile = board.tiles[tileIndex];
+  if (!tile || tile.matched || tile.revealed) {
+    return { success: false, error: "Tile is not available" };
+  }
+
+  if (!isRankedTileFree(board, tile)) {
+    return { success: false, error: "Tile is blocked" };
+  }
+
+  tile.revealed = true;
+
+  pushRankedEvent(match, participant.index, {
+    type: "reveal",
+    actorIndex: participant.index,
+    tileIndex: tile.index,
+    tileId: tile.id,
+  });
+
+  const opponentIndex = participant.index === 1 ? 2 : 1;
+  pushRankedEvent(match, opponentIndex, {
+    type: "reveal",
+    actorIndex: participant.index,
+    tileIndex: tile.index,
+    tileId: tile.id,
+  });
+
+  if (board.firstRevealedIndex < 0) {
+    board.firstRevealedIndex = tile.index;
+    return { success: true };
+  }
+
+  if (board.firstRevealedIndex === tile.index) {
+    return { success: true };
+  }
+
+  const first = board.tiles[board.firstRevealedIndex];
+  const second = tile;
+  const matched = !!first && first.revealed && !first.matched && first.id === second.id;
+  board.firstRevealedIndex = -1;
+
+  if (matched) {
+    first.matched = true;
+    second.matched = true;
+    first.revealed = false;
+    second.revealed = false;
+
+    pushRankedPairEvents(match, participant.index, first, second, true);
+    applyRankedDamage(match, participant.index);
+
+    if (isRankedBoardCleared(board)) {
+      pushRankedFinish(match, participant.index);
+    }
+  } else {
+    if (first) {
+      first.revealed = false;
+    }
+    second.revealed = false;
+    pushRankedPairEvents(match, participant.index, first, second, false);
+  }
+
+  return { success: true };
+}
+
+function pushRankedPairEvents(match, actorIndex, first, second, matched) {
+  const opponentIndex = actorIndex === 1 ? 2 : 1;
+  const payload = {
+    type: "pair",
+    actorIndex,
+    matched,
+    firstTileIndex: first ? first.index : -1,
+    secondTileIndex: second ? second.index : -1,
+    firstTileId: first ? first.id : "",
+    secondTileId: second ? second.id : "",
+  };
+
+  pushRankedEvent(match, actorIndex, payload);
+  pushRankedEvent(match, opponentIndex, payload);
+}
+
+function applyRankedDamage(match, actorIndex) {
+  const hpKey = getRankedOpponentHpKey(actorIndex);
+  const maxHpKey = getRankedMaxOpponentHpKey(actorIndex);
+  const opponentIndex = actorIndex === 1 ? 2 : 1;
+  const damage = Math.max(1, Math.floor(Number(match.state.damagePerPair) || 1));
+  const before = Math.max(0, Math.floor(Number(match.state[hpKey]) || 0));
+  const after = Math.max(0, before - damage);
+  match.state[hpKey] = after;
+
+  const payload = {
+    type: "damage",
+    actorIndex,
+    targetIndex: opponentIndex,
+    amount: damage,
+    hpAfter: after,
+    maxHp: Math.max(1, Math.floor(Number(match.state[maxHpKey]) || 10)),
+  };
+
+  pushRankedEvent(match, actorIndex, payload);
+  pushRankedEvent(match, opponentIndex, payload);
+
+  if (after <= 0) {
+    pushRankedFinish(match, actorIndex);
+  }
+}
+
+function pushRankedFinish(match, winnerIndex) {
+  if (match.finished) {
+    return;
+  }
+
+  match.finished = true;
+  pushRankedEvent(match, 1, { type: "finish", winnerIndex });
+  pushRankedEvent(match, 2, { type: "finish", winnerIndex });
+}
+
 async function ensureSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS accounts (
@@ -894,7 +2095,15 @@ ensureSchema()
   .catch((err) => console.error("Profile schema failed", err));
 
 app.get("/", (req, res) => {
-  res.send("Server is running");
+  res.type("html").send(renderSymbiosisLandingPage());
+});
+
+app.get("/download", (req, res) => {
+  res.type("html").send(renderSymbiosisLandingPage());
+});
+
+app.get("/apk", (req, res) => {
+  res.redirect(302, "/downloads/symbiosis-latest.apk");
 });
 
 app.get("/health", async (req, res) => {
@@ -1470,6 +2679,177 @@ app.post("/presence/heartbeat", async (req, res) => {
     }
 
     res.json({ success: true, userId: user.id, checkedAt: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/battle/ranked/queue", async (req, res) => {
+  try {
+    cleanupRankedMatchmaking();
+
+    const user = await getUserByToken(req.body.token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const activeMatch = findActiveRankedMatchForUser(user.id);
+    if (activeMatch) {
+      return res.json(createRankedMatchResponse(activeMatch, user.id));
+    }
+
+    const player = mapRankedPlayer(user, req.body);
+    const opponentEntry = findQueuedRankedOpponent(user.id, player.rankPoints);
+
+    if (!opponentEntry) {
+      rankedQueue.set(user.id, {
+        player,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      return res.json({ success: true, matched: false, status: "waiting" });
+    }
+
+    rankedQueue.delete(user.id);
+    rankedQueue.delete(opponentEntry.player.userId);
+
+    const match = createRankedMatch(opponentEntry.player, player);
+    res.json(createRankedMatchResponse(match, user.id));
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get("/battle/ranked/status", async (req, res) => {
+  try {
+    cleanupRankedMatchmaking();
+
+    const user = await getUserByToken(req.query.token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const activeMatch = findActiveRankedMatchForUser(user.id);
+    if (activeMatch) {
+      return res.json(createRankedMatchResponse(activeMatch, user.id));
+    }
+
+    const queued = rankedQueue.get(user.id);
+    if (queued) {
+      queued.updatedAt = Date.now();
+      return res.json({ success: true, matched: false, status: "waiting" });
+    }
+
+    res.json({ success: true, matched: false, status: "idle" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/battle/ranked/cancel", async (req, res) => {
+  try {
+    const user = await getUserByToken(req.body.token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    rankedQueue.delete(user.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/battle/ranked/event", async (req, res) => {
+  try {
+    cleanupRankedMatchmaking();
+
+    const user = await getUserByToken(req.body.token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const match = rankedMatches.get(String(req.body.matchId || ""));
+    const participant = getRankedParticipant(match, user.id);
+    if (!participant) {
+      return res.status(404).json({ success: false, error: "Match not found" });
+    }
+
+    const type = String(req.body.type || "").trim();
+    if (type === "board") {
+      const result = applyRankedBoardManifest(match, participant, req.body);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      return res.json({ success: true, authoritative: true });
+    }
+
+    if (type === "pick") {
+      const result = applyRankedPick(match, participant, req.body);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      return res.json({ success: true, authoritative: true });
+    }
+
+    if (type !== "tile" && type !== "damage" && type !== "finish") {
+      return res.status(400).json({ success: false, error: "Invalid event type" });
+    }
+
+    const event = {
+      seq: match.nextSeq++,
+      senderIndex: participant.index,
+      type,
+      tileIndex: Math.floor(Number(req.body.tileIndex) || 0),
+      tileId: String(req.body.tileId || "").slice(0, 64),
+      targetSide: String(req.body.targetSide || "").slice(0, 32),
+      amount: Math.max(0, Math.floor(Number(req.body.amount) || 0)),
+      createdAt: new Date().toISOString(),
+    };
+
+    match.events.push(event);
+    if (match.events.length > 500) {
+      match.events.splice(0, match.events.length - 500);
+    }
+
+    match.updatedAt = Date.now();
+    if (type === "finish") {
+      pushRankedFinish(match, participant.index);
+    }
+
+    res.json({ success: true, seq: event.seq });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get("/battle/ranked/events", async (req, res) => {
+  try {
+    cleanupRankedMatchmaking();
+
+    const user = await getUserByToken(req.query.token);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid session" });
+    }
+
+    const match = rankedMatches.get(String(req.query.matchId || ""));
+    const participant = getRankedParticipant(match, user.id);
+    if (!participant) {
+      return res.status(404).json({ success: false, error: "Match not found" });
+    }
+
+    const afterSeq = Math.max(0, Math.floor(Number(req.query.afterSeq) || 0));
+    const events = match.events
+      .filter((event) => event.seq > afterSeq &&
+        (event.recipientIndex === participant.index ||
+         (event.recipientIndex == null && event.senderIndex !== participant.index)))
+      .slice(0, 100);
+
+    match.updatedAt = Date.now();
+    res.json({ success: true, events });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
