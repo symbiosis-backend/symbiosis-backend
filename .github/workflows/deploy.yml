@@ -10,6 +10,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check SSH secret shape
+        run: |
+          echo "host_set=${{ secrets.SERVER_HOST != '' }}"
+          echo "user_set=${{ secrets.SERVER_USER != '' }}"
+          echo "key_set=${{ secrets.SERVER_SSH_KEY != '' }}"
+          mkdir -p ~/.ssh
+          cat > ~/.ssh/deploy_key <<'EOF'
+          ${{ secrets.SERVER_SSH_KEY }}
+          EOF
+          sed -i 's/^[[:space:]]*//' ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "key_lines=$(wc -l < ~/.ssh/deploy_key)"
+          echo "key_header=$(head -n 1 ~/.ssh/deploy_key | sed 's/./*/g')"
+          ssh-keygen -y -f ~/.ssh/deploy_key >/tmp/deploy_key.pub
+          echo "public_key_fingerprint=$(ssh-keygen -lf /tmp/deploy_key.pub | awk '{print $2}')"
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
