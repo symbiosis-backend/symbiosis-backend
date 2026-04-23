@@ -960,7 +960,6 @@ function renderAndroidDownloadPage() {
   const versionName = manifest.versionName || manifest.latestVersion || "latest";
   const versionCode = manifest.versionCode || manifest.latestVersionCode || "";
   const sizeBytes = manifest.sizeBytes || manifest.apkSizeBytes || 0;
-  const releaseNotes = manifest.releaseNotes || "Latest Android build.";
   const updatedAt = manifest.updatedAt || manifest.checkedAt || new Date().toISOString();
   const pageTitle = `Symbiosis Android ${versionName}`;
 
@@ -1141,6 +1140,7 @@ function getLandingLocale(req) {
 const LANDING_COPY = {
   en: {
     htmlLang: "en",
+    pageTitle: "DLSymbiosis - Mahjong Battle",
     metaDescription: "Download DLSymbiosis, a Mahjong Battle game for Android with online profiles and local Wi-Fi duels.",
     ogDescription: "Mahjong Battle for Android. Download the latest APK.",
     homeLabel: "DLSymbiosis home",
@@ -1156,6 +1156,7 @@ const LANDING_COPY = {
     updated: "Updated",
     latestBuild: "Latest build",
     buildLabel: "Latest Android build",
+    releaseNotes: "Adds random and ranked matchmaking search screens, bot fallback, updated battle tile backs, and hides lobby buttons during battles.",
     platform: "Platform",
     androidApk: "Android APK",
     mode: "Mode",
@@ -1164,54 +1165,66 @@ const LANDING_COPY = {
     creditsLabel: "Project credits",
     creditsTitle: "Development and art",
     creditsText: "DLSymbiosis is built for Dynasty Legacy, with development and construction by BlackYang and art and design by WhiteYin.",
+    creatorsHeadline: "Built by two creators",
+    creatorsText: "A focused two-person project: BlackYang shapes the systems, construction, and release flow; WhiteYin gives the world its visual identity.",
+    blackYangRole: "Development and construction",
+    whiteYinRole: "Art and design",
     madeForAlt: "Made for Dynasty Legacy",
     devAlt: "Development and construction by BlackYang. Art and design by WhiteYin.",
   },
   ru: {
     htmlLang: "ru",
-    metaDescription: "Скачайте DLSymbiosis, Mahjong Battle для Android с онлайн-профилями и дуэлями по локальной Wi-Fi сети.",
-    ogDescription: "Mahjong Battle для Android. Скачайте последнюю APK-сборку.",
+    pageTitle: "DLSymbiosis - маджонг-бои",
+    metaDescription: "Скачайте DLSymbiosis, игру с маджонг-боями для Android, онлайн-профилями и дуэлями по локальной Wi-Fi сети.",
+    ogDescription: "Маджонг-бои для Android. Скачайте последнюю APK-сборку.",
     homeLabel: "Главная DLSymbiosis",
     primaryNav: "Основная навигация",
     download: "Скачать",
     updates: "Обновления",
     account: "Профиль",
     contact: "Контакты",
-    eyebrow: "Mahjong Battle для Android",
-    lead: "Быстрая Mahjong Battle игра для Android. Скачайте актуальную APK, установите её и играйте с профилем онлайн или по локальной Wi-Fi сети.",
+    eyebrow: "Боевая маджонг-игра для Android",
+    lead: "Быстрая игра с маджонг-боями для Android. Скачайте актуальную APK, установите её и играйте с профилем онлайн или по локальной Wi-Fi сети.",
     downloadApk: "Скачать APK",
     version: "Версия",
     updated: "Обновлено",
     latestBuild: "Последняя сборка",
     buildLabel: "Последняя Android-сборка",
+    releaseNotes: "Добавлены экраны поиска случайных и рейтинговых матчей, запасной бот, обновлённые рубашки боевых плиток и скрытие кнопок лобби во время боя.",
     platform: "Платформа",
-    androidApk: "Android APK",
+    androidApk: "APK для Android",
     mode: "Режим",
-    onlineWifi: "Онлайн / Wi-Fi",
+    onlineWifi: "Онлайн / локальный Wi-Fi",
     support: "Поддержка",
     creditsLabel: "Авторы проекта",
     creditsTitle: "Разработка и арт",
     creditsText: "DLSymbiosis создана для Dynasty Legacy. Разработка и конструкция: BlackYang. Арт и дизайн: WhiteYin.",
+    creatorsHeadline: "Проект создают два автора",
+    creatorsText: "Это сфокусированный проект двух людей: BlackYang собирает системы, архитектуру и релизный поток, а WhiteYin формирует визуальный стиль мира.",
+    blackYangRole: "Разработка и конструкция",
+    whiteYinRole: "Арт и дизайн",
     madeForAlt: "Создано для Dynasty Legacy",
     devAlt: "Разработка и конструкция: BlackYang. Арт и дизайн: WhiteYin.",
   },
   tr: {
     htmlLang: "tr",
-    metaDescription: "DLSymbiosis'i indirin: Android için çevrim içi profiller ve yerel Wi-Fi düelloları olan bir Mahjong Battle oyunu.",
-    ogDescription: "Android için Mahjong Battle. En yeni APK'yi indirin.",
+    pageTitle: "DLSymbiosis - mahjong savaşları",
+    metaDescription: "DLSymbiosis'i indirin: Android için çevrim içi profiller ve yerel Wi-Fi düelloları olan bir mahjong savaş oyunu.",
+    ogDescription: "Android için mahjong savaşları. En yeni APK'yi indirin.",
     homeLabel: "DLSymbiosis ana sayfası",
     primaryNav: "Ana gezinme",
     download: "İndir",
     updates: "Güncellemeler",
     account: "Profil",
     contact: "İletişim",
-    eyebrow: "Android için Mahjong Battle",
-    lead: "Android için hızlı bir Mahjong Battle oyunu. Güncel APK'yi indirin, kurun ve profilinizle çevrim içi ya da yerel Wi-Fi üzerinden oynayın.",
+    eyebrow: "Android için Mahjong savaş oyunu",
+    lead: "Android için hızlı bir mahjong savaş oyunu. Güncel APK'yi indirin, kurun ve profilinizle çevrim içi ya da yerel Wi-Fi üzerinden oynayın.",
     downloadApk: "APK indir",
     version: "Sürüm",
     updated: "Güncellendi",
     latestBuild: "Son sürüm",
     buildLabel: "Son Android sürümü",
+    releaseNotes: "Rastgele ve dereceli eşleştirme arama ekranları, bot yedeği, güncellenmiş savaş taşı arka yüzleri ve savaş sırasında lobi düğmelerini gizleme eklendi.",
     platform: "Platform",
     androidApk: "Android APK",
     mode: "Mod",
@@ -1220,6 +1233,10 @@ const LANDING_COPY = {
     creditsLabel: "Proje ekibi",
     creditsTitle: "Geliştirme ve sanat",
     creditsText: "DLSymbiosis, Dynasty Legacy için hazırlandı. Geliştirme ve kurulum BlackYang, sanat ve tasarım WhiteYin tarafından yapıldı.",
+    creatorsHeadline: "İki yaratıcı tarafından geliştiriliyor",
+    creatorsText: "Odaklı iki kişilik bir proje: BlackYang sistemleri, yapıyı ve yayın akışını kurar; WhiteYin dünyaya görsel kimliğini verir.",
+    blackYangRole: "Geliştirme ve kurulum",
+    whiteYinRole: "Sanat ve tasarım",
     madeForAlt: "Dynasty Legacy için yapıldı",
     devAlt: "Geliştirme ve kurulum BlackYang. Sanat ve tasarım WhiteYin.",
   },
@@ -1236,10 +1253,8 @@ function renderSymbiosisLandingPage(req) {
   const versionName = manifest.versionName || manifest.latestVersion || "latest";
   const versionCode = manifest.versionCode || manifest.latestVersionCode || "";
   const sizeBytes = manifest.sizeBytes || manifest.apkSizeBytes || 0;
-  const releaseNotes = manifest.releaseNotes || "Latest Android build.";
   const updatedAt = manifest.updatedAt || manifest.checkedAt || new Date().toISOString();
   const supportEmail = "support@dlsymbiosis.com";
-  const pageTitle = "DLSymbiosis - Mahjong Battle";
   const locale = getLandingLocale(req);
   const copy = LANDING_COPY[locale] || LANDING_COPY.en;
   const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
@@ -1253,11 +1268,11 @@ function renderSymbiosisLandingPage(req) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1014">
   <meta name="description" content="${escapeHtml(copy.metaDescription)}">
-  <meta property="og:title" content="${escapeHtml(pageTitle)}">
+  <meta property="og:title" content="${escapeHtml(copy.pageTitle)}">
   <meta property="og:description" content="${escapeHtml(copy.ogDescription)}">
   <meta property="og:image" content="${escapeHtml(logoUrl)}">
   <link rel="icon" type="image/png" href="${escapeHtml(logoUrl)}">
-  <title>${escapeHtml(pageTitle)}</title>
+  <title>${escapeHtml(copy.pageTitle)}</title>
   <style>
     :root {
       color-scheme: dark;
@@ -1442,8 +1457,14 @@ function renderSymbiosisLandingPage(req) {
     }
     .credit-art {
       display: grid;
-      gap: 16px;
-      margin-bottom: 22px;
+      gap: 14px;
+      margin-bottom: 24px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(217,173,103,.12), rgba(111,198,174,.07)),
+        rgba(255,255,255,.025);
     }
     .credit-art img {
       display: block;
@@ -1469,6 +1490,65 @@ function renderSymbiosisLandingPage(req) {
       margin: 14px 0 0;
       color: var(--muted);
       line-height: 1.55;
+    }
+    .creator-showcase {
+      margin-top: 24px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+    }
+    .creator-showcase h3 {
+      margin-top: 0;
+    }
+    .creator-showcase .creator-title {
+      margin: 8px 0 0;
+      color: var(--ink);
+      font-size: 21px;
+      font-weight: 850;
+      line-height: 1.2;
+    }
+    .creator-showcase .creator-text {
+      margin: 12px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .creator-duo {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .creator-card {
+      min-height: 104px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255,255,255,.035);
+      display: grid;
+      align-content: center;
+      gap: 8px;
+    }
+    .creator-card strong {
+      color: var(--ink);
+      font-size: 19px;
+      line-height: 1.1;
+    }
+    .creator-card span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .creator-card:first-child {
+      border-color: rgba(217,173,103,.42);
+    }
+    .creator-card:last-child {
+      border-color: rgba(111,198,174,.38);
+    }
+    .creator-signature {
+      display: block;
+      width: 100%;
+      height: auto;
+      margin-top: 18px;
+      opacity: .92;
     }
     .build-list {
       margin: 22px 0;
@@ -1524,6 +1604,7 @@ function renderSymbiosisLandingPage(req) {
       .navlinks { flex-wrap: wrap; gap: 8px; }
       .navlinks a { min-height: 36px; padding: 0 12px; }
       .button { width: 100%; }
+      .creator-duo { grid-template-columns: 1fr; }
       .build-list div { display: grid; gap: 4px; }
       .version span + span::before { display: none; }
     }
@@ -1569,10 +1650,9 @@ function renderSymbiosisLandingPage(req) {
       <aside class="download-card" aria-label="${escapeHtml(copy.buildLabel)}">
         <div class="credit-art">
           <img class="made-for" src="${escapeHtml(madeForUrl)}" alt="${escapeHtml(copy.madeForAlt)}" width="1260" height="264">
-          <img src="${escapeHtml(devCreditUrl)}" alt="${escapeHtml(copy.devAlt)}" width="1173" height="489">
         </div>
         <h2>${escapeHtml(copy.latestBuild)}</h2>
-        <p>${escapeHtml(releaseNotes)}</p>
+        <p>${escapeHtml(copy.releaseNotes)}</p>
         <div class="build-list">
           <div>
             <span>${escapeHtml(copy.platform)}</span>
@@ -1588,9 +1668,22 @@ function renderSymbiosisLandingPage(req) {
           </div>
         </div>
         <a class="button primary" href="${escapeHtml(apkUrl)}">${escapeHtml(copy.downloadApk)}</a>
-        <a class="direct" href="${escapeHtml(apkUrl)}">${escapeHtml(apkUrl)}</a>
-        <h3>${escapeHtml(copy.creditsLabel)}</h3>
-        <p>${escapeHtml(copy.creditsText)}</p>
+        <section class="creator-showcase" aria-label="${escapeHtml(copy.creditsLabel)}">
+          <h3>${escapeHtml(copy.creditsLabel)}</h3>
+          <div class="creator-title">${escapeHtml(copy.creatorsHeadline)}</div>
+          <p class="creator-text">${escapeHtml(copy.creatorsText)}</p>
+          <div class="creator-duo">
+            <div class="creator-card">
+              <strong>BlackYang</strong>
+              <span>${escapeHtml(copy.blackYangRole)}</span>
+            </div>
+            <div class="creator-card">
+              <strong>WhiteYin</strong>
+              <span>${escapeHtml(copy.whiteYinRole)}</span>
+            </div>
+          </div>
+          <img class="creator-signature" src="${escapeHtml(devCreditUrl)}" alt="${escapeHtml(copy.devAlt)}" width="1173" height="489">
+        </section>
       </aside>
     </section>
   </main>
