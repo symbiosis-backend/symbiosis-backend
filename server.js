@@ -728,12 +728,27 @@ function renderChangelogPage(req) {
     .navlinks {
       display: flex;
       align-items: center;
-      gap: 22px;
+      gap: 8px;
       color: var(--muted);
       font-size: 14px;
     }
-    .navlinks a { text-decoration: none; white-space: nowrap; }
-    .navlinks a:hover { color: var(--ink); }
+    .navlinks a {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      white-space: nowrap;
+      font-weight: 800;
+      background: rgba(255,255,255,.035);
+    }
+    .navlinks a:hover {
+      color: var(--ink);
+      background: rgba(255,255,255,.07);
+    }
     .lang-switch {
       display: flex;
       align-items: center;
@@ -874,7 +889,8 @@ function renderChangelogPage(req) {
       .button { width: 100%; }
       .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
       .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
-      .navlinks { gap: 14px; }
+      .navlinks { flex-wrap: wrap; gap: 8px; }
+      .navlinks a { min-height: 36px; padding: 0 12px; }
     }
   </style>
 </head>
@@ -1282,15 +1298,27 @@ function renderSymbiosisLandingPage(req) {
     .navlinks {
       display: flex;
       align-items: center;
-      gap: 22px;
+      gap: 8px;
       color: var(--muted);
       font-size: 14px;
     }
     .navlinks a {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       text-decoration: none;
       white-space: nowrap;
+      font-weight: 800;
+      background: rgba(255,255,255,.035);
     }
-    .navlinks a:hover { color: var(--ink); }
+    .navlinks a:hover {
+      color: var(--ink);
+      background: rgba(255,255,255,.07);
+    }
     .lang-switch {
       display: flex;
       align-items: center;
@@ -1477,7 +1505,8 @@ function renderSymbiosisLandingPage(req) {
       .shell { width: min(100% - 22px, 1040px); }
       .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
       .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
-      .navlinks { gap: 14px; }
+      .navlinks { flex-wrap: wrap; gap: 8px; }
+      .navlinks a { min-height: 36px; padding: 0 12px; }
       .button { width: 100%; }
       .build-list div { display: grid; gap: 4px; }
       .version span + span::before { display: none; }
