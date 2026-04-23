@@ -19,6 +19,17 @@ jobs:
           script: |
             echo "=== CONNECTED TO SERVER ==="
             whoami
+            echo "=== SYNC CHECKOUT ==="
+            for dir in /home/deploy/symbiosis-backend /home/deploy/backend /home/deploy/app /var/www/symbiosis-backend; do
+              if [ -d "$dir/.git" ]; then
+                echo "Using checkout: $dir"
+                cd "$dir"
+                git fetch origin main
+                git reset --hard origin/main
+                git clean -fd
+                break
+              fi
+            done
             echo "=== START DEPLOY ==="
             bash /home/deploy/deploy_backend.sh
             echo "=== DEPLOY FINISHED ==="
