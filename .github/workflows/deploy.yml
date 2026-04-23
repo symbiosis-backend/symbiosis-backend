@@ -19,19 +19,6 @@ jobs:
           script: |
             echo "=== CONNECTED TO SERVER ==="
             whoami
-            echo "=== RESET SERVER CHECKOUT IF PRESENT ==="
-            set +e
-            REPO_DIR="$(find /home/deploy -maxdepth 5 -type d -name .git 2>/dev/null | sed 's#/.git##' | grep 'symbiosis-backend' | head -n 1)"
-            if [ -n "$REPO_DIR" ]; then
-              echo "Repo: $REPO_DIR"
-              cd "$REPO_DIR"
-              git fetch origin main
-              git reset --hard origin/main
-              git clean -fd
-            else
-              echo "No existing checkout found before deploy script."
-            fi
-            set -e
             echo "=== START DEPLOY ==="
             bash /home/deploy/deploy_backend.sh
             echo "=== DEPLOY FINISHED ==="
