@@ -85,6 +85,15 @@ function verifyPassword(password, storedHash, legacyPassword) {
 
 function normalizeLanguage(value) {
   const language = String(value || "").trim().toLowerCase();
+  if (language === "ru") {
+    return "russian";
+  }
+  if (language === "en") {
+    return "english";
+  }
+  if (language === "tr") {
+    return "turkish";
+  }
   if (language === "russian" || language === "english" || language === "turkish") {
     return language;
   }
@@ -434,6 +443,7 @@ const CHANGELOG_COPY = {
     primaryNav: "Primary navigation",
     home: "Home",
     download: "Download",
+    account: "Profile",
     downloadLatest: "Download latest APK",
     eyebrow: "Development History",
     headline: "DLSymbiosis Changelog",
@@ -452,6 +462,7 @@ const CHANGELOG_COPY = {
     primaryNav: "Основная навигация",
     home: "Главная",
     download: "Скачать",
+    account: "Профиль",
     downloadLatest: "Скачать последнюю APK",
     eyebrow: "История разработки",
     headline: "Журнал обновлений DLSymbiosis",
@@ -470,6 +481,7 @@ const CHANGELOG_COPY = {
     primaryNav: "Ana gezinme",
     home: "Ana sayfa",
     download: "İndir",
+    account: "Profil",
     downloadLatest: "En yeni APK'yi indir",
     eyebrow: "Geliştirme Geçmişi",
     headline: "DLSymbiosis Güncelleme Günlüğü",
@@ -904,6 +916,7 @@ function renderChangelogPage(req) {
         <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
           <a href="${escapeHtml(withLangPath("/", locale))}">${escapeHtml(copy.home)}</a>
           <a href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.download)}</a>
+          <a href="${escapeHtml(withLangPath("/account", locale))}">${escapeHtml(copy.account)}</a>
         </nav>
         <nav class="lang-switch" aria-label="Language">
           <a class="${locale === "en" ? "active" : ""}" href="/changelog?lang=en" lang="en">EN</a>
@@ -1134,6 +1147,7 @@ const LANDING_COPY = {
     primaryNav: "Primary navigation",
     download: "Download",
     updates: "Updates",
+    account: "Profile",
     contact: "Contact",
     eyebrow: "Mahjong Battle for Android",
     lead: "A fast Mahjong battle game for Android. Download the current APK, install it, and play with your profile online or over local Wi-Fi.",
@@ -1161,6 +1175,7 @@ const LANDING_COPY = {
     primaryNav: "Основная навигация",
     download: "Скачать",
     updates: "Обновления",
+    account: "Профиль",
     contact: "Контакты",
     eyebrow: "Mahjong Battle для Android",
     lead: "Быстрая Mahjong Battle игра для Android. Скачайте актуальную APK, установите её и играйте с профилем онлайн или по локальной Wi-Fi сети.",
@@ -1188,6 +1203,7 @@ const LANDING_COPY = {
     primaryNav: "Ana gezinme",
     download: "İndir",
     updates: "Güncellemeler",
+    account: "Profil",
     contact: "İletişim",
     eyebrow: "Android için Mahjong Battle",
     lead: "Android için hızlı bir Mahjong Battle oyunu. Güncel APK'yi indirin, kurun ve profilinizle çevrim içi ya da yerel Wi-Fi üzerinden oynayın.",
@@ -1523,6 +1539,7 @@ function renderSymbiosisLandingPage(req) {
         <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
           <a href="${escapeHtml(apkUrl)}">${escapeHtml(copy.download)}</a>
           <a href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.updates)}</a>
+          <a href="${escapeHtml(withLangPath("/account", locale))}">${escapeHtml(copy.account)}</a>
           <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(copy.contact)}</a>
         </nav>
         <nav class="lang-switch" aria-label="Language">
@@ -1583,6 +1600,615 @@ function renderSymbiosisLandingPage(req) {
       <span><a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a></span>
     </div>
   </footer>
+</body>
+</html>`;
+}
+
+const ACCOUNT_COPY = {
+  en: {
+    htmlLang: "en",
+    pageTitle: "DLSymbiosis Profile",
+    metaDescription: "Sign in to your DLSymbiosis game account or create a new profile.",
+    homeLabel: "DLSymbiosis home",
+    primaryNav: "Primary navigation",
+    home: "Home",
+    download: "Download",
+    updates: "Updates",
+    contact: "Contact",
+    eyebrow: "Game Account",
+    headline: "Your DLSymbiosis profile",
+    lead: "Use the same account you use in the game. Sign in to see your profile, dynasty, player ID, and profile slot.",
+    signIn: "Sign in",
+    register: "Register",
+    email: "Email",
+    password: "Password",
+    slot: "Profile slot",
+    nickname: "Nickname",
+    dynasty: "Dynasty name",
+    language: "Language",
+    createAccount: "Create account",
+    signInButton: "Sign in",
+    logout: "Log out",
+    signedIn: "Signed in",
+    notSignedIn: "Not signed in",
+    profile: "Profile",
+    account: "Account",
+    playerId: "Player ID",
+    dynastyId: "Dynasty ID",
+    empty: "No profile loaded yet.",
+    loading: "Loading...",
+    savedSession: "Saved session restored.",
+    loginHelp: "If you have multiple in-game profiles, choose the same slot you use in the game.",
+    registerHelp: "This creates a game-compatible account and first profile slot.",
+    age: "Age",
+    successRegister: "Account created. You are signed in.",
+    successLogin: "Signed in.",
+    genericError: "Something went wrong. Please try again.",
+  },
+  ru: {
+    htmlLang: "ru",
+    pageTitle: "Профиль DLSymbiosis",
+    metaDescription: "Войдите в игровой аккаунт DLSymbiosis или создайте новый профиль.",
+    homeLabel: "Главная DLSymbiosis",
+    primaryNav: "Основная навигация",
+    home: "Главная",
+    download: "Скачать",
+    updates: "Обновления",
+    contact: "Контакты",
+    eyebrow: "Игровой аккаунт",
+    headline: "Ваш профиль DLSymbiosis",
+    lead: "Используйте тот же аккаунт, что и в игре. После входа здесь будет виден профиль, династия, ID игрока и слот.",
+    signIn: "Войти",
+    register: "Регистрация",
+    email: "Email",
+    password: "Пароль",
+    slot: "Слот профиля",
+    nickname: "Никнейм",
+    dynasty: "Название династии",
+    language: "Язык",
+    createAccount: "Создать аккаунт",
+    signInButton: "Войти",
+    logout: "Выйти",
+    signedIn: "Вы вошли",
+    notSignedIn: "Вы не вошли",
+    profile: "Профиль",
+    account: "Аккаунт",
+    playerId: "ID игрока",
+    dynastyId: "ID династии",
+    empty: "Профиль пока не загружен.",
+    loading: "Загрузка...",
+    savedSession: "Сохранённая сессия восстановлена.",
+    loginHelp: "Если в игре несколько профилей, выберите тот же слот, которым пользуетесь в игре.",
+    registerHelp: "Создаёт аккаунт, совместимый с игрой, и первый слот профиля.",
+    age: "Возраст",
+    successRegister: "Аккаунт создан. Вы вошли.",
+    successLogin: "Вход выполнен.",
+    genericError: "Что-то пошло не так. Попробуйте ещё раз.",
+  },
+  tr: {
+    htmlLang: "tr",
+    pageTitle: "DLSymbiosis Profili",
+    metaDescription: "DLSymbiosis oyun hesabınıza giriş yapın veya yeni profil oluşturun.",
+    homeLabel: "DLSymbiosis ana sayfası",
+    primaryNav: "Ana gezinme",
+    home: "Ana sayfa",
+    download: "İndir",
+    updates: "Güncellemeler",
+    contact: "İletişim",
+    eyebrow: "Oyun Hesabı",
+    headline: "DLSymbiosis profiliniz",
+    lead: "Oyunda kullandığınız aynı hesabı kullanın. Giriş yaptıktan sonra profiliniz, hanedanınız, oyuncu ID'niz ve profil slotunuz burada görünür.",
+    signIn: "Giriş yap",
+    register: "Kayıt ol",
+    email: "Email",
+    password: "Şifre",
+    slot: "Profil slotu",
+    nickname: "Takma ad",
+    dynasty: "Hanedan adı",
+    language: "Dil",
+    createAccount: "Hesap oluştur",
+    signInButton: "Giriş yap",
+    logout: "Çıkış yap",
+    signedIn: "Giriş yapıldı",
+    notSignedIn: "Giriş yapılmadı",
+    profile: "Profil",
+    account: "Hesap",
+    playerId: "Oyuncu ID",
+    dynastyId: "Hanedan ID",
+    empty: "Henüz profil yüklenmedi.",
+    loading: "Yükleniyor...",
+    savedSession: "Kayıtlı oturum geri yüklendi.",
+    loginHelp: "Oyunda birden fazla profiliniz varsa oyunda kullandığınız aynı slotu seçin.",
+    registerHelp: "Oyunla uyumlu bir hesap ve ilk profil slotunu oluşturur.",
+    age: "Yaş",
+    successRegister: "Hesap oluşturuldu. Giriş yaptınız.",
+    successLogin: "Giriş yapıldı.",
+    genericError: "Bir şey ters gitti. Lütfen tekrar deneyin.",
+  },
+};
+
+function renderAccountPage(req) {
+  const locale = getLandingLocale(req);
+  const copy = ACCOUNT_COPY[locale] || ACCOUNT_COPY.en;
+  const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
+  const sloganUrl = getSiteAssetUrl("Slogan.png");
+  const copyJson = JSON.stringify(copy).replace(/</g, "\\u003c");
+  const localeJson = JSON.stringify(locale).replace(/</g, "\\u003c");
+
+  return `<!doctype html>
+<html lang="${escapeHtml(copy.htmlLang)}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1014">
+  <meta name="description" content="${escapeHtml(copy.metaDescription)}">
+  <meta property="og:image" content="${escapeHtml(logoUrl)}">
+  <link rel="icon" type="image/png" href="${escapeHtml(logoUrl)}">
+  <title>${escapeHtml(copy.pageTitle)}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0c0f12;
+      --ink: #f4efe5;
+      --muted: #a8b0b6;
+      --line: rgba(255,255,255,.12);
+      --panel: #12171b;
+      --gold: #d9ad67;
+      --jade: #6fc6ae;
+      --danger: #e37b70;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    .shell { width: min(1040px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(12,15,18,.88);
+      border-bottom: 1px solid var(--line);
+    }
+    .nav {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+    .brand img {
+      display: block;
+      width: min(190px, 42vw);
+      height: auto;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+    .navlinks {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .navlinks a {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      white-space: nowrap;
+      font-weight: 800;
+      background: rgba(255,255,255,.035);
+    }
+    .navlinks a:hover {
+      color: var(--ink);
+      background: rgba(255,255,255,.07);
+    }
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .lang-switch a {
+      min-width: 34px;
+      min-height: 30px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .lang-switch a.active {
+      color: var(--bg);
+      background: var(--gold);
+    }
+    .hero {
+      padding: 72px 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 48px;
+      align-items: start;
+    }
+    .eyebrow {
+      color: var(--gold);
+      font-weight: 750;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0;
+      max-width: 680px;
+      font-size: clamp(42px, 7vw, 78px);
+      line-height: .95;
+      letter-spacing: 0;
+    }
+    .lead {
+      max-width: 620px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 21px);
+      line-height: 1.5;
+    }
+    .slogan {
+      display: block;
+      width: min(520px, 100%);
+      height: auto;
+      margin-top: 34px;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .tab {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.035);
+      color: var(--ink);
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .tab.active {
+      color: var(--bg);
+      background: var(--gold);
+      border-color: transparent;
+    }
+    form { display: grid; gap: 12px; }
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 750;
+    }
+    input, select {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0d1216;
+      color: var(--ink);
+      padding: 0 12px;
+      font: inherit;
+    }
+    .button {
+      min-height: 50px;
+      padding: 0 20px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-weight: 800;
+      cursor: pointer;
+      color: var(--ink);
+      background: transparent;
+    }
+    .button.primary {
+      color: var(--bg);
+      background: var(--gold);
+      border-color: transparent;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 4px 0 0;
+    }
+    .status {
+      min-height: 24px;
+      margin-top: 14px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--jade); }
+    .profile-card {
+      display: none;
+      gap: 14px;
+      margin-top: 18px;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+    }
+    .profile-card.show { display: grid; }
+    .profile-card h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .detail-list {
+      display: grid;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .detail-list div {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+    }
+    .detail-list strong {
+      color: var(--ink);
+      text-align: right;
+    }
+    .hidden { display: none; }
+    footer {
+      padding: 28px 0 42px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+    @media (max-width: 880px) {
+      .hero { grid-template-columns: 1fr; padding-top: 54px; }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 22px, 1040px); }
+      .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
+      .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
+      .navlinks { flex-wrap: wrap; gap: 8px; }
+      .navlinks a { min-height: 36px; padding: 0 12px; }
+      .detail-list div { display: grid; gap: 4px; }
+      .detail-list strong { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell nav">
+      <a class="brand" href="${escapeHtml(withLangPath("/", locale))}" aria-label="${escapeHtml(copy.homeLabel)}">
+        <img src="${escapeHtml(logoUrl)}" alt="DLSymbiosis" width="1187" height="188">
+      </a>
+      <div class="nav-right">
+        <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
+          <a href="${escapeHtml(withLangPath("/", locale))}">${escapeHtml(copy.home)}</a>
+          <a href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.download)}</a>
+          <a href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.updates)}</a>
+          <a href="mailto:support@dlsymbiosis.com">${escapeHtml(copy.contact)}</a>
+        </nav>
+        <nav class="lang-switch" aria-label="Language">
+          <a class="${locale === "en" ? "active" : ""}" href="/account?lang=en" lang="en">EN</a>
+          <a class="${locale === "ru" ? "active" : ""}" href="/account?lang=ru" lang="ru">RU</a>
+          <a class="${locale === "tr" ? "active" : ""}" href="/account?lang=tr" lang="tr">TR</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <main class="shell hero">
+    <section>
+      <div class="eyebrow">${escapeHtml(copy.eyebrow)}</div>
+      <h1>${escapeHtml(copy.headline)}</h1>
+      <p class="lead">${escapeHtml(copy.lead)}</p>
+      <img class="slogan" src="${escapeHtml(sloganUrl)}" alt="Gateway to the Universe" width="951" height="303">
+    </section>
+    <section class="panel" aria-label="${escapeHtml(copy.profile)}">
+      <div class="tabs">
+        <button class="tab active" type="button" data-tab="login">${escapeHtml(copy.signIn)}</button>
+        <button class="tab" type="button" data-tab="register">${escapeHtml(copy.register)}</button>
+      </div>
+      <form id="loginForm">
+        <label>${escapeHtml(copy.email)}
+          <input name="email" type="email" autocomplete="email" required>
+        </label>
+        <label>${escapeHtml(copy.password)}
+          <input name="password" type="password" autocomplete="current-password" required>
+        </label>
+        <label>${escapeHtml(copy.slot)}
+          <select name="slotIndex">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+        <p class="hint">${escapeHtml(copy.loginHelp)}</p>
+        <button class="button primary" type="submit">${escapeHtml(copy.signInButton)}</button>
+      </form>
+      <form id="registerForm" class="hidden">
+        <label>${escapeHtml(copy.email)}
+          <input name="email" type="email" autocomplete="email" required>
+        </label>
+        <label>${escapeHtml(copy.password)}
+          <input name="password" type="password" autocomplete="new-password" minlength="6" required>
+        </label>
+        <label>${escapeHtml(copy.nickname)}
+          <input name="nickname" type="text" maxlength="100" required>
+        </label>
+        <label>${escapeHtml(copy.dynasty)}
+          <input name="dynastyName" type="text" maxlength="64" required>
+        </label>
+        <label>${escapeHtml(copy.slot)}
+          <select name="slotIndex">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+          </select>
+        </label>
+        <label>${escapeHtml(copy.age)}
+          <input name="age" type="number" min="0" max="120" value="0">
+        </label>
+        <input name="language" type="hidden" value="${escapeHtml(locale)}">
+        <p class="hint">${escapeHtml(copy.registerHelp)}</p>
+        <button class="button primary" type="submit">${escapeHtml(copy.createAccount)}</button>
+      </form>
+      <div id="status" class="status">${escapeHtml(copy.empty)}</div>
+      <div id="profileCard" class="profile-card">
+        <h2 id="profileName">${escapeHtml(copy.profile)}</h2>
+        <div class="detail-list">
+          <div><span>${escapeHtml(copy.account)}</span><strong id="profileEmail"></strong></div>
+          <div><span>${escapeHtml(copy.playerId)}</span><strong id="playerId"></strong></div>
+          <div><span>${escapeHtml(copy.dynasty)}</span><strong id="dynastyName"></strong></div>
+          <div><span>${escapeHtml(copy.dynastyId)}</span><strong id="dynastyId"></strong></div>
+          <div><span>${escapeHtml(copy.slot)}</span><strong id="slotIndex"></strong></div>
+        </div>
+        <button id="logoutButton" class="button" type="button">${escapeHtml(copy.logout)}</button>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="shell">(c) ${new Date().getFullYear()} DLSymbiosis</div>
+  </footer>
+  <script>
+    const copy = ${copyJson};
+    const locale = ${localeJson};
+    const tokenKey = "dlsymbiosis_token";
+    const statusEl = document.getElementById("status");
+    const profileCard = document.getElementById("profileCard");
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+
+    function setStatus(message, type) {
+      statusEl.textContent = message || "";
+      statusEl.className = "status" + (type ? " " + type : "");
+    }
+
+    function payloadFromForm(form) {
+      return Object.fromEntries(new FormData(form).entries());
+    }
+
+    async function postJson(url, payload) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || copy.genericError);
+      }
+      return data;
+    }
+
+    function showProfile(data, message) {
+      const user = data.user || {};
+      const account = data.account || {};
+      document.getElementById("profileName").textContent = user.nickname || copy.profile;
+      document.getElementById("profileEmail").textContent = account.email || user.email || "-";
+      document.getElementById("playerId").textContent = user.publicPlayerId || "-";
+      document.getElementById("dynastyName").textContent = account.dynastyName || user.dynastyName || "-";
+      document.getElementById("dynastyId").textContent = account.dynastyId || user.dynastyId || "-";
+      document.getElementById("slotIndex").textContent = user.slotIndex || "-";
+      profileCard.classList.add("show");
+      setStatus(message || copy.signedIn, "ok");
+    }
+
+    async function restoreSession() {
+      const token = localStorage.getItem(tokenKey);
+      if (!token) {
+        return;
+      }
+      setStatus(copy.loading);
+      try {
+        const data = await postJson("/auth/me", { token });
+        showProfile(data, copy.savedSession);
+      } catch (error) {
+        localStorage.removeItem(tokenKey);
+        profileCard.classList.remove("show");
+        setStatus(copy.notSignedIn);
+      }
+    }
+
+    document.querySelectorAll(".tab").forEach((button) => {
+      button.addEventListener("click", () => {
+        const tab = button.dataset.tab;
+        document.querySelectorAll(".tab").forEach((item) => item.classList.toggle("active", item === button));
+        loginForm.classList.toggle("hidden", tab !== "login");
+        registerForm.classList.toggle("hidden", tab !== "register");
+        setStatus(copy.empty);
+      });
+    });
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setStatus(copy.loading);
+      try {
+        const data = await postJson("/login", payloadFromForm(loginForm));
+        localStorage.setItem(tokenKey, data.token);
+        showProfile(data, copy.successLogin);
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    });
+
+    registerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setStatus(copy.loading);
+      try {
+        const payload = payloadFromForm(registerForm);
+        payload.gender = "not_specified";
+        payload.avatarId = 0;
+        const data = await postJson("/register", payload);
+        localStorage.setItem(tokenKey, data.token);
+        showProfile(data, copy.successRegister);
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    });
+
+    document.getElementById("logoutButton").addEventListener("click", async () => {
+      const token = localStorage.getItem(tokenKey);
+      localStorage.removeItem(tokenKey);
+      profileCard.classList.remove("show");
+      setStatus(copy.notSignedIn);
+      if (token) {
+        try { await postJson("/auth/logout", { token }); } catch (error) {}
+      }
+    });
+
+    restoreSession();
+  </script>
 </body>
 </html>`;
 }
@@ -2741,6 +3367,10 @@ app.get("/", (req, res) => {
 
 app.get("/download", (req, res) => {
   res.type("html").send(renderSymbiosisLandingPage(req));
+});
+
+app.get("/account", (req, res) => {
+  res.type("html").send(renderAccountPage(req));
 });
 
 app.get("/changelog", (req, res) => {
