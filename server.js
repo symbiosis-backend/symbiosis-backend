@@ -15,7 +15,17 @@ app.use((req, res, next) => {
 
 app.use(cors());
 app.use(express.json());
-app.get("/downloads/symbiosis-latest.apk", (req, res) => {
+app.get("/downloads/symbiosis-latest.apk", (req, res, next) => {
+  const apkPath = path.join(__dirname, "downloads", "symbiosis-latest.apk");
+  if (fs.existsSync(apkPath)) {
+    res.sendFile(apkPath, (err) => {
+      if (err) {
+        next(err);
+      }
+    });
+    return;
+  }
+
   res.redirect(302, ANDROID_EMBEDDED_APK_URL);
 });
 app.use("/downloads", express.static("downloads"));
@@ -33,12 +43,12 @@ const SEED_TEST_NICKNAME = process.env.SEED_TEST_NICKNAME || "TestPlayer";
 const SEED_TEST_PUBLIC_PLAYER_ID = process.env.SEED_TEST_PUBLIC_PLAYER_ID || "MB-TEST0001";
 const RANKED_QUEUE_TIMEOUT_SECONDS = readIntEnv("RANKED_QUEUE_TIMEOUT_SECONDS", 90);
 const RANKED_MATCH_TTL_SECONDS = readIntEnv("RANKED_MATCH_TTL_SECONDS", 60 * 60 * 3);
-const ANDROID_EMBEDDED_VERSION_NAME = "1.0.7";
-const ANDROID_EMBEDDED_VERSION_CODE = 100007;
-const ANDROID_EMBEDDED_APK_URL = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/main/downloads/symbiosis-latest.apk";
-const ANDROID_EMBEDDED_APK_SHA256 = "f3fcab11e3dd08187b96ec7815b5794d50f12876081533ff437cec4562a71565";
-const ANDROID_EMBEDDED_APK_SIZE_BYTES = 73170320;
-const ANDROID_EMBEDDED_RELEASE_NOTES = "Adds random and ranked matchmaking search screens, bot fallback, updated battle tile backs, and hides lobby buttons during battles.";
+const ANDROID_EMBEDDED_VERSION_NAME = "1.0.8";
+const ANDROID_EMBEDDED_VERSION_CODE = 100008;
+const ANDROID_EMBEDDED_APK_URL = "https://dlsymbiosis.com/downloads/symbiosis-latest.apk";
+const ANDROID_EMBEDDED_APK_SHA256 = "d6ba7f6885cdabed19d549ab1772571667cce567158817c4bb72b79f0ccc1043";
+const ANDROID_EMBEDDED_APK_SIZE_BYTES = 73785894;
+const ANDROID_EMBEDDED_RELEASE_NOTES = "Project Chronicles: dynasty vault and bank moved into the central point, while the profile block, vault, and bank now share a stable upper-left anchor.";
 
 const rankedQueue = new Map();
 const rankedMatches = new Map();
