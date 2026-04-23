@@ -338,6 +338,7 @@ function formatBytes(value) {
 }
 
 const SITE_ASSET_BASE_URL = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/main/downloads";
+const SITE_BUTTON_FRAME_URL = "https://raw.githubusercontent.com/symbiosis-backend/symbiosis-backend/b32dc8c16347f7be3e16d12ff6c5574bc1b3d253/downloads/BtnMainStandart.png";
 
 function getSiteAssetUrl(fileName) {
   return `${SITE_ASSET_BASE_URL}/${encodeURIComponent(fileName)}`;
@@ -714,6 +715,7 @@ function renderChangelogPage(req) {
   const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
   const sloganUrl = getSiteAssetUrl("Slogan.png");
   const companyUrl = getSiteAssetUrl("OzkullarCompany.png");
+  const buttonUrl = SITE_BUTTON_FRAME_URL;
 
   return `<!doctype html>
 <html lang="${escapeHtml(copy.htmlLang)}">
@@ -728,13 +730,14 @@ function renderChangelogPage(req) {
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0c0f12;
-      --ink: #f4efe5;
-      --muted: #a8b0b6;
-      --line: rgba(255,255,255,.12);
-      --panel: #12171b;
-      --gold: #d9ad67;
-      --jade: #6fc6ae;
+      --bg: #00020b;
+      --ink: #f4f8ff;
+      --muted: #aab8cc;
+      --line: rgba(149,194,255,.24);
+      --panel: #06101d;
+      --gold: #8cc8ff;
+      --jade: #62d8ff;
+      --button-img: url("${escapeHtml(buttonUrl)}");
     }
     * { box-sizing: border-box; }
     body {
@@ -785,28 +788,34 @@ function renderChangelogPage(req) {
       font-size: 14px;
     }
     .navlinks a {
-      min-height: 38px;
-      padding: 0 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      min-height: 42px;
+      padding: 0 18px;
+      border: 1px solid rgba(140,200,255,.42);
+      border-radius: 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       text-decoration: none;
       white-space: nowrap;
       font-weight: 800;
-      background: rgba(255,255,255,.035);
+      color: #eaf6ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
+        var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      text-shadow: 0 1px 0 #000;
     }
     .navlinks a:hover {
-      color: var(--ink);
-      background: rgba(255,255,255,.07);
+      color: #ffffff;
+      border-color: rgba(174,220,255,.72);
+      filter: brightness(1.13);
     }
     .lang-switch {
       display: flex;
       align-items: center;
       gap: 4px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      border: 1px solid rgba(140,200,255,.34);
+      border-radius: 10px;
       padding: 4px;
     }
     .lang-switch a {
@@ -822,8 +831,8 @@ function renderChangelogPage(req) {
       font-weight: 800;
     }
     .lang-switch a.active {
-      color: var(--bg);
-      background: var(--gold);
+      color: #001020;
+      background: linear-gradient(180deg, #dff5ff, #62d8ff);
     }
     .hero {
       padding: 72px 0 42px;
@@ -878,12 +887,16 @@ function renderChangelogPage(req) {
       text-decoration: none;
       font-weight: 800;
       border: 1px solid var(--line);
-      background: rgba(255,255,255,.06);
+      background: rgba(12,31,58,.48);
     }
     .button.primary {
-      color: var(--bg);
-      background: var(--gold);
-      border-color: transparent;
+      color: #f4f8ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
+        var(--button-img) center / 100% 100% no-repeat;
+      border-color: rgba(140,200,255,.44);
+      text-shadow: 0 1px 0 #000;
+      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
     }
     .timeline {
       padding: 22px 0 76px;
@@ -942,7 +955,7 @@ function renderChangelogPage(req) {
       .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
       .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
       .navlinks { flex-wrap: wrap; gap: 8px; }
-      .navlinks a { min-height: 36px; padding: 0 12px; }
+      .navlinks a { min-height: 38px; padding: 0 14px; }
     }
   </style>
 </head>
@@ -1300,6 +1313,7 @@ function renderSymbiosisLandingPage(req) {
   const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
   const devCreditUrl = getSiteAssetUrl("DevelopmentAndDesign.png");
   const madeForUrl = getSiteAssetUrl("MadeForDynastyLegacy.png");
+  const buttonUrl = SITE_BUTTON_FRAME_URL;
 
   return `<!doctype html>
 <html lang="${escapeHtml(copy.htmlLang)}">
@@ -1316,13 +1330,14 @@ function renderSymbiosisLandingPage(req) {
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0c0f12;
-      --ink: #f4efe5;
-      --muted: #a8b0b6;
-      --line: rgba(255,255,255,.12);
-      --panel: #12171b;
-      --gold: #d9ad67;
-      --jade: #6fc6ae;
+      --bg: #00020b;
+      --ink: #f4f8ff;
+      --muted: #aab8cc;
+      --line: rgba(149,194,255,.24);
+      --panel: #06101d;
+      --gold: #8cc8ff;
+      --jade: #62d8ff;
+      --button-img: url("${escapeHtml(buttonUrl)}");
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -1374,28 +1389,34 @@ function renderSymbiosisLandingPage(req) {
       font-size: 14px;
     }
     .navlinks a {
-      min-height: 38px;
-      padding: 0 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      min-height: 42px;
+      padding: 0 18px;
+      border: 1px solid rgba(140,200,255,.42);
+      border-radius: 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       text-decoration: none;
       white-space: nowrap;
       font-weight: 800;
-      background: rgba(255,255,255,.035);
+      color: #eaf6ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
+        var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      text-shadow: 0 1px 0 #000;
     }
     .navlinks a:hover {
-      color: var(--ink);
-      background: rgba(255,255,255,.07);
+      color: #ffffff;
+      border-color: rgba(174,220,255,.72);
+      filter: brightness(1.13);
     }
     .lang-switch {
       display: flex;
       align-items: center;
       gap: 4px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      border: 1px solid rgba(140,200,255,.34);
+      border-radius: 10px;
       padding: 4px;
     }
     .lang-switch a {
@@ -1411,8 +1432,8 @@ function renderSymbiosisLandingPage(req) {
       font-weight: 800;
     }
     .lang-switch a.active {
-      color: var(--bg);
-      background: var(--gold);
+      color: #001020;
+      background: linear-gradient(180deg, #dff5ff, #62d8ff);
     }
     .hero {
       min-height: calc(100vh - 64px);
@@ -1468,9 +1489,13 @@ function renderSymbiosisLandingPage(req) {
       border: 1px solid var(--line);
     }
     .button.primary {
-      color: var(--bg);
-      background: var(--gold);
-      border-color: transparent;
+      color: #f4f8ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
+        var(--button-img) center / 100% 100% no-repeat;
+      border-color: rgba(140,200,255,.44);
+      text-shadow: 0 1px 0 #000;
+      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
     }
     .button.secondary {
       color: var(--ink);
@@ -1503,7 +1528,7 @@ function renderSymbiosisLandingPage(req) {
       border: 1px solid var(--line);
       border-radius: 8px;
       background:
-        linear-gradient(135deg, rgba(217,173,103,.12), rgba(111,198,174,.07)),
+        linear-gradient(135deg, rgba(98,216,255,.13), rgba(37,87,156,.12)),
         rgba(255,255,255,.025);
     }
     .credit-art img {
@@ -1642,7 +1667,7 @@ function renderSymbiosisLandingPage(req) {
       .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
       .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
       .navlinks { flex-wrap: wrap; gap: 8px; }
-      .navlinks a { min-height: 36px; padding: 0 12px; }
+      .navlinks a { min-height: 38px; padding: 0 14px; }
       .button { width: 100%; }
       .creator-duo { grid-template-columns: 1fr; }
       .build-list div { display: grid; gap: 4px; }
@@ -1865,6 +1890,7 @@ function renderAccountPage(req) {
   const copy = ACCOUNT_COPY[locale] || ACCOUNT_COPY.en;
   const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
   const sloganUrl = getSiteAssetUrl("Slogan.png");
+  const buttonUrl = SITE_BUTTON_FRAME_URL;
   const copyJson = JSON.stringify(copy).replace(/</g, "\\u003c");
   const localeJson = JSON.stringify(locale).replace(/</g, "\\u003c");
 
@@ -1881,14 +1907,15 @@ function renderAccountPage(req) {
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0c0f12;
-      --ink: #f4efe5;
-      --muted: #a8b0b6;
-      --line: rgba(255,255,255,.12);
-      --panel: #12171b;
-      --gold: #d9ad67;
-      --jade: #6fc6ae;
+      --bg: #00020b;
+      --ink: #f4f8ff;
+      --muted: #aab8cc;
+      --line: rgba(149,194,255,.24);
+      --panel: #06101d;
+      --gold: #8cc8ff;
+      --jade: #62d8ff;
       --danger: #e37b70;
+      --button-img: url("${escapeHtml(buttonUrl)}");
     }
     * { box-sizing: border-box; }
     body {
@@ -1937,28 +1964,34 @@ function renderAccountPage(req) {
       font-size: 14px;
     }
     .navlinks a {
-      min-height: 38px;
-      padding: 0 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      min-height: 42px;
+      padding: 0 18px;
+      border: 1px solid rgba(140,200,255,.42);
+      border-radius: 10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       text-decoration: none;
       white-space: nowrap;
       font-weight: 800;
-      background: rgba(255,255,255,.035);
+      color: #eaf6ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
+        var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      text-shadow: 0 1px 0 #000;
     }
     .navlinks a:hover {
-      color: var(--ink);
-      background: rgba(255,255,255,.07);
+      color: #ffffff;
+      border-color: rgba(174,220,255,.72);
+      filter: brightness(1.13);
     }
     .lang-switch {
       display: flex;
       align-items: center;
       gap: 4px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      border: 1px solid rgba(140,200,255,.34);
+      border-radius: 10px;
       padding: 4px;
     }
     .lang-switch a {
@@ -1974,8 +2007,8 @@ function renderAccountPage(req) {
       font-weight: 800;
     }
     .lang-switch a.active {
-      color: var(--bg);
-      background: var(--gold);
+      color: #001020;
+      background: linear-gradient(180deg, #dff5ff, #62d8ff);
     }
     .hero {
       padding: 72px 0;
@@ -2034,8 +2067,8 @@ function renderAccountPage(req) {
       cursor: pointer;
     }
     .tab.active {
-      color: var(--bg);
-      background: var(--gold);
+      color: #001020;
+      background: linear-gradient(180deg, #dff5ff, #62d8ff);
       border-color: transparent;
     }
     form { display: grid; gap: 12px; }
@@ -2071,9 +2104,13 @@ function renderAccountPage(req) {
       background: transparent;
     }
     .button.primary {
-      color: var(--bg);
-      background: var(--gold);
-      border-color: transparent;
+      color: #f4f8ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
+        var(--button-img) center / 100% 100% no-repeat;
+      border-color: rgba(140,200,255,.44);
+      text-shadow: 0 1px 0 #000;
+      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
     }
     .hint {
       color: var(--muted);
@@ -2133,7 +2170,7 @@ function renderAccountPage(req) {
       .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
       .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
       .navlinks { flex-wrap: wrap; gap: 8px; }
-      .navlinks a { min-height: 36px; padding: 0 12px; }
+      .navlinks a { min-height: 38px; padding: 0 14px; }
       .detail-list div { display: grid; gap: 4px; }
       .detail-list strong { text-align: left; }
     }
