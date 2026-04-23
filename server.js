@@ -251,7 +251,7 @@ function getAndroidUpdateManifest() {
     updateUrl,
     apkAvailable: apk.exists,
     apkSizeBytes: apk.sizeBytes,
-    releaseNotes: process.env.ANDROID_RELEASE_NOTES || "A new Symbiosis build is available.",
+    releaseNotes: process.env.ANDROID_RELEASE_NOTES || "Project Chronicles: dynasty vault, bank, and the central point layout are ready.",
     checkedAt: new Date().toISOString(),
   };
   const embedded = {
@@ -336,15 +336,27 @@ function getSiteAssetUrl(fileName) {
 function getChangelogEntries() {
   return [
     {
+      version: "1.0.8",
+      versionCode: 100008,
+      date: "2026-04-23",
+      title: "The Dynasty and Central Point Chapter",
+      summary: "This chapter moved Symbiosis from a set of separate buttons toward a calmer central point. The profile, the dynasty vault, and the bank now live together in the upper-left corner, like the first little administrative district of the account.",
+      changes: [
+        "Added the dynasty vault as shared storage for gold and amethysts across one account's profiles.",
+        "Added a separate bank for exchanging amethysts into gold without touching the vault.",
+        "Rebuilt the central point's upper-left UI around one shared anchor layer so profile, vault, and bank stay together."
+      ]
+    },
+    {
       version: "1.0.7",
       versionCode: 100007,
       date: "2026-04-22",
-      title: "Project Chronicle",
-      summary: "Added an update history page on the website and an in-game changelog window so players can follow how Symbiosis grows.",
+      title: "Project Chronicles",
+      summary: "We opened a place where the project can speak about its own making: not only a list of updates, but a running story of how Symbiosis is assembled one system at a time.",
       changes: [
-        "New public changelog page on dlsymbiosis.com.",
-        "New in-game Updates button for the main menus and lobbies.",
-        "The game reads changelog entries from the server, with an offline fallback."
+        "New public Chronicles page on dlsymbiosis.com.",
+        "New in-game Chronicles button for the main menus and lobbies.",
+        "The game reads chronicle entries from the server, with an offline fallback."
       ]
     },
     {
@@ -437,58 +449,58 @@ function getChangelogEntries() {
 const CHANGELOG_COPY = {
   en: {
     htmlLang: "en",
-    metaDescription: "DLSymbiosis update history and release notes.",
-    pageTitle: "DLSymbiosis Changelog",
+    metaDescription: "DLSymbiosis project chronicles and release story.",
+    pageTitle: "DLSymbiosis Chronicles",
     homeLabel: "DLSymbiosis home",
     primaryNav: "Primary navigation",
     home: "Home",
     download: "Download",
     account: "Profile",
     downloadLatest: "Download latest APK",
-    eyebrow: "Development History",
-    headline: "DLSymbiosis Changelog",
-    lead: "A living record of what changed in each Android build, from the first public APK to online ranked battles and future systems.",
+    eyebrow: "Project Chronicles",
+    headline: "DLSymbiosis Chronicles",
+    lead: "A living story of how we are building Symbiosis: from the first public APK to online battles, dynasty systems, and the small decisions that slowly give the project its shape.",
     latest: "Latest",
     version: "Version",
-    footer: "Project changelog",
+    footer: "Project chronicles",
     visualAlt: "Gateway to the Universe",
     companyAlt: "Ozkullar Company",
   },
   ru: {
     htmlLang: "ru",
-    metaDescription: "История обновлений и заметки к релизам DLSymbiosis.",
-    pageTitle: "Журнал обновлений DLSymbiosis",
+    metaDescription: "Хроники проекта DLSymbiosis и история его сборок.",
+    pageTitle: "Хроники DLSymbiosis",
     homeLabel: "Главная DLSymbiosis",
     primaryNav: "Основная навигация",
     home: "Главная",
     download: "Скачать",
     account: "Профиль",
     downloadLatest: "Скачать последнюю APK",
-    eyebrow: "История разработки",
-    headline: "Журнал обновлений DLSymbiosis",
-    lead: "Короткая история изменений в каждой Android-сборке: от первой публичной APK до онлайн-боёв и будущих систем.",
+    eyebrow: "Хроники нашего проекта",
+    headline: "Хроники DLSymbiosis",
+    lead: "Живая повесть о том, как мы собираем Symbiosis: от первой публичной APK до онлайн-боёв, династических систем и маленьких решений, из которых постепенно появляется форма проекта.",
     latest: "Последнее",
     version: "Версия",
-    footer: "Журнал проекта",
+    footer: "Хроники проекта",
     visualAlt: "Gateway to the Universe",
     companyAlt: "Ozkullar Company",
   },
   tr: {
     htmlLang: "tr",
-    metaDescription: "DLSymbiosis güncelleme geçmişi ve sürüm notları.",
-    pageTitle: "DLSymbiosis Güncelleme Günlüğü",
+    metaDescription: "DLSymbiosis proje kronikleri ve surum hikayesi.",
+    pageTitle: "DLSymbiosis Kronikleri",
     homeLabel: "DLSymbiosis ana sayfası",
     primaryNav: "Ana gezinme",
     home: "Ana sayfa",
     download: "İndir",
     account: "Profil",
     downloadLatest: "En yeni APK'yi indir",
-    eyebrow: "Geliştirme Geçmişi",
-    headline: "DLSymbiosis Güncelleme Günlüğü",
-    lead: "İlk herkese açık APK'den çevrim içi savaşlara ve gelecek sistemlere kadar her Android sürümünde değişenlerin kısa kaydı.",
+    eyebrow: "Proje Kronikleri",
+    headline: "DLSymbiosis Kronikleri",
+    lead: "Symbiosis'i nasil kurdugumuzu anlatan canli bir hikaye: ilk herkese acik APK'den cevrim ici savaslara, hanedan sistemlerine ve projeye yavas yavas sekil veren kucuk kararlara kadar.",
     latest: "En yeni",
     version: "Sürüm",
-    footer: "Proje günlüğü",
+    footer: "Proje kronikleri",
     visualAlt: "Gateway to the Universe",
     companyAlt: "Ozkullar Company",
   },
@@ -496,13 +508,22 @@ const CHANGELOG_COPY = {
 
 const CHANGELOG_ENTRY_COPY = {
   ru: {
-    "1.0.7": {
-      title: "Хроника проекта",
-      summary: "Добавлена страница истории обновлений на сайте и окно changelog в игре, чтобы игроки могли следить за развитием Symbiosis.",
+    "1.0.8": {
+      title: "Глава о династии и центральном пункте",
+      summary: "Эта глава перевела Symbiosis от разрозненных кнопок к более спокойному центральному пункту. Профиль, династическое хранилище и банк теперь живут вместе в левом верхнем углу, как первый маленький административный район аккаунта.",
       changes: [
-        "Добавлена публичная страница обновлений на dlsymbiosis.com.",
-        "Добавлена кнопка обновлений в главные меню и лобби.",
-        "Игра читает записи обновлений с сервера и имеет офлайн-резерв."
+        "Династическое хранилище стало общим складом золота и аметистов для профилей одного аккаунта.",
+        "Банк отделён от хранилища и занимается только обменом аметистов на золото.",
+        "Левый верхний блок центрального пункта получил общий якорный слой, чтобы профиль, хранилище и банк держались вместе."
+      ]
+    },
+    "1.0.7": {
+      title: "Хроники проекта",
+      summary: "Мы открыли место, где проект может рассказывать о собственном создании: не просто список обновлений, а продолжающуюся повесть о том, как Symbiosis собирается система за системой.",
+      changes: [
+        "На dlsymbiosis.com появилась публичная страница хроник.",
+        "В игре появилась кнопка хроник для главных меню и лобби.",
+        "Игра читает главы хроник с сервера и имеет офлайн-резерв."
       ]
     },
     "1.0.6": {
@@ -570,13 +591,22 @@ const CHANGELOG_ENTRY_COPY = {
     }
   },
   tr: {
-    "1.0.7": {
-      title: "Proje Günlüğü",
-      summary: "Oyuncuların Symbiosis'in gelişimini takip edebilmesi için web sitesine güncelleme geçmişi sayfası ve oyuna changelog penceresi eklendi.",
+    "1.0.8": {
+      title: "Hanedan ve Merkez Bolum",
+      summary: "Bu bolum Symbiosis'i daginik dugmelerden daha sakin bir merkez bolume tasidi. Profil, hanedan deposu ve banka artik sol ust kosede birlikte duruyor; hesabin ilk kucuk yonetim alani gibi.",
       changes: [
-        "dlsymbiosis.com üzerinde herkese açık güncelleme sayfası eklendi.",
-        "Ana menülere ve lobilere Güncellemeler düğmesi eklendi.",
-        "Oyun, güncelleme kayıtlarını sunucudan okur ve çevrim dışı yedeğe sahiptir."
+        "Hanedan deposu, ayni hesaptaki profiller icin ortak altin ve ametist birikimi oldu.",
+        "Banka depodan ayrildi ve yalnizca ametistleri altina cevirmek icin calisiyor.",
+        "Merkez bolumun sol ust blogu tek ortak anchor katmani kullaniyor; profil, depo ve banka birlikte kaliyor."
+      ]
+    },
+    "1.0.7": {
+      title: "Proje Kronikleri",
+      summary: "Projenin kendi yapilisini anlatabilecegi bir yer actik: yalnizca guncelleme listesi degil, Symbiosis'in sistem sistem nasil kuruldugunu anlatan surekli bir hikaye.",
+      changes: [
+        "dlsymbiosis.com uzerinde herkese acik Kronikler sayfasi eklendi.",
+        "Ana menulere ve lobilere Kronikler dugmesi eklendi.",
+        "Oyun kronik bolumlerini sunucudan okur ve cevrim disi yedege sahiptir."
       ]
     },
     "1.0.6": {
@@ -1146,7 +1176,7 @@ const LANDING_COPY = {
     homeLabel: "DLSymbiosis home",
     primaryNav: "Primary navigation",
     download: "Download",
-    updates: "Updates",
+    updates: "Chronicles",
     account: "Profile",
     contact: "Contact",
     eyebrow: "Mahjong Battle for Android",
@@ -1156,7 +1186,7 @@ const LANDING_COPY = {
     updated: "Updated",
     latestBuild: "Latest build",
     buildLabel: "Latest Android build",
-    releaseNotes: "Adds random and ranked matchmaking search screens, bot fallback, updated battle tile backs, and hides lobby buttons during battles.",
+    releaseNotes: "Project Chronicles: dynasty vault and bank moved into the central point, while the profile block now shares a stable anchor layer with them.",
     platform: "Platform",
     androidApk: "Android APK",
     mode: "Mode",
@@ -1180,7 +1210,7 @@ const LANDING_COPY = {
     homeLabel: "Главная DLSymbiosis",
     primaryNav: "Основная навигация",
     download: "Скачать",
-    updates: "Обновления",
+    updates: "Хроники",
     account: "Профиль",
     contact: "Контакты",
     eyebrow: "Боевая маджонг-игра для Android",
@@ -1190,7 +1220,7 @@ const LANDING_COPY = {
     updated: "Обновлено",
     latestBuild: "Последняя сборка",
     buildLabel: "Последняя Android-сборка",
-    releaseNotes: "Добавлены экраны поиска случайных и рейтинговых матчей, запасной бот, обновлённые рубашки боевых плиток и скрытие кнопок лобби во время боя.",
+    releaseNotes: "Хроники нашего проекта: династическое хранилище и банк пришли в центральный пункт, а профильный блок получил общий стабильный якорь.",
     platform: "Платформа",
     androidApk: "APK для Android",
     mode: "Режим",
@@ -1214,7 +1244,7 @@ const LANDING_COPY = {
     homeLabel: "DLSymbiosis ana sayfası",
     primaryNav: "Ana gezinme",
     download: "İndir",
-    updates: "Güncellemeler",
+    updates: "Kronikler",
     account: "Profil",
     contact: "İletişim",
     eyebrow: "Android için Mahjong savaş oyunu",
@@ -1224,7 +1254,7 @@ const LANDING_COPY = {
     updated: "Güncellendi",
     latestBuild: "Son sürüm",
     buildLabel: "Son Android sürümü",
-    releaseNotes: "Rastgele ve dereceli eşleştirme arama ekranları, bot yedeği, güncellenmiş savaş taşı arka yüzleri ve savaş sırasında lobi düğmelerini gizleme eklendi.",
+    releaseNotes: "Proje Kronikleri: hanedan deposu ve banka merkez bolume tasindi, profil blogu onlarla ayni sabit anchor katmanini paylasiyor.",
     platform: "Platform",
     androidApk: "Android APK",
     mode: "Mod",
@@ -1706,7 +1736,7 @@ const ACCOUNT_COPY = {
     primaryNav: "Primary navigation",
     home: "Home",
     download: "Download",
-    updates: "Updates",
+    updates: "Chronicles",
     contact: "Contact",
     eyebrow: "Game Account",
     headline: "Your DLSymbiosis profile",
@@ -1746,7 +1776,7 @@ const ACCOUNT_COPY = {
     primaryNav: "Основная навигация",
     home: "Главная",
     download: "Скачать",
-    updates: "Обновления",
+    updates: "Хроники",
     contact: "Контакты",
     eyebrow: "Игровой аккаунт",
     headline: "Ваш профиль DLSymbiosis",
@@ -1786,7 +1816,7 @@ const ACCOUNT_COPY = {
     primaryNav: "Ana gezinme",
     home: "Ana sayfa",
     download: "İndir",
-    updates: "Güncellemeler",
+    updates: "Kronikler",
     contact: "İletişim",
     eyebrow: "Oyun Hesabı",
     headline: "DLSymbiosis profiliniz",
@@ -3467,6 +3497,10 @@ app.get("/account", (req, res) => {
 });
 
 app.get("/changelog", (req, res) => {
+  res.type("html").send(renderChangelogPage(req));
+});
+
+app.get("/chronicles", (req, res) => {
   res.type("html").send(renderChangelogPage(req));
 });
 
