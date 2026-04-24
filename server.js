@@ -790,7 +790,7 @@ function renderChangelogPage(req) {
     .navlinks a {
       min-height: 42px;
       padding: 0 18px;
-      border: 1px solid rgba(140,200,255,.42);
+      border: none;
       border-radius: 10px;
       display: inline-flex;
       align-items: center;
@@ -799,16 +799,13 @@ function renderChangelogPage(req) {
       white-space: nowrap;
       font-weight: 800;
       color: #eaf6ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
-        var(--button-img) center / 100% 100% no-repeat;
-      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      background: var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: none;
       text-shadow: 0 1px 0 #000;
     }
     .navlinks a:hover {
       color: #ffffff;
-      border-color: rgba(174,220,255,.72);
-      filter: brightness(1.13);
+      filter: brightness(1.08);
     }
     .lang-switch {
       display: flex;
@@ -886,17 +883,14 @@ function renderChangelogPage(req) {
       justify-content: center;
       text-decoration: none;
       font-weight: 800;
-      border: 1px solid var(--line);
-      background: rgba(12,31,58,.48);
+      border: none;
+      background: transparent;
     }
     .button.primary {
       color: #f4f8ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
-        var(--button-img) center / 100% 100% no-repeat;
-      border-color: rgba(140,200,255,.44);
+      background: var(--button-img) center / 100% 100% no-repeat;
       text-shadow: 0 1px 0 #000;
-      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
+      box-shadow: none;
     }
     .timeline {
       padding: 22px 0 76px;
@@ -1392,7 +1386,7 @@ function renderSymbiosisLandingPage(req) {
     .navlinks a {
       min-height: 42px;
       padding: 0 18px;
-      border: 1px solid rgba(140,200,255,.42);
+      border: none;
       border-radius: 10px;
       display: inline-flex;
       align-items: center;
@@ -1401,16 +1395,13 @@ function renderSymbiosisLandingPage(req) {
       white-space: nowrap;
       font-weight: 800;
       color: #eaf6ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
-        var(--button-img) center / 100% 100% no-repeat;
-      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      background: var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: none;
       text-shadow: 0 1px 0 #000;
     }
     .navlinks a:hover {
       color: #ffffff;
-      border-color: rgba(174,220,255,.72);
-      filter: brightness(1.13);
+      filter: brightness(1.08);
     }
     .lang-switch {
       display: flex;
@@ -1487,18 +1478,16 @@ function renderSymbiosisLandingPage(req) {
       justify-content: center;
       text-decoration: none;
       font-weight: 800;
-      border: 1px solid var(--line);
+      border: none;
     }
     .button.primary {
       color: #f4f8ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
-        var(--button-img) center / 100% 100% no-repeat;
-      border-color: rgba(140,200,255,.44);
+      background: var(--button-img) center / 100% 100% no-repeat;
       text-shadow: 0 1px 0 #000;
-      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
+      box-shadow: none;
     }
     .button.secondary {
+      border: 1px solid var(--line);
       color: var(--ink);
       background: transparent;
     }
@@ -1958,7 +1947,7 @@ function renderDynastyLegacyPage(req) {
     .navlinks a {
       min-height: 42px;
       padding: 0 18px;
-      border: 1px solid rgba(140,200,255,.42);
+      border: none;
       border-radius: 10px;
       display: inline-flex;
       align-items: center;
@@ -1967,16 +1956,13 @@ function renderDynastyLegacyPage(req) {
       white-space: nowrap;
       font-weight: 800;
       color: #eaf6ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
-        var(--button-img) center / 100% 100% no-repeat;
-      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      background: var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: none;
       text-shadow: 0 1px 0 #000;
     }
     .navlinks a:hover {
       color: #ffffff;
-      border-color: rgba(174,220,255,.72);
-      filter: brightness(1.13);
+      filter: brightness(1.08);
     }
     .lang-switch {
       display: flex;
@@ -2045,18 +2031,16 @@ function renderDynastyLegacyPage(req) {
       justify-content: center;
       text-decoration: none;
       font-weight: 800;
-      border: 1px solid var(--line);
+      border: none;
     }
     .button.primary {
       color: #f4f8ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
-        var(--button-img) center / 100% 100% no-repeat;
-      border-color: rgba(140,200,255,.44);
+      background: var(--button-img) center / 100% 100% no-repeat;
       text-shadow: 0 1px 0 #000;
-      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
+      box-shadow: none;
     }
     .button.secondary {
+      border: 1px solid var(--line);
       color: var(--ink);
       background: transparent;
     }
@@ -2437,7 +2421,7 @@ function renderAccountPage(req) {
     .navlinks a {
       min-height: 42px;
       padding: 0 18px;
-      border: 1px solid rgba(140,200,255,.42);
+      border: none;
       border-radius: 10px;
       display: inline-flex;
       align-items: center;
@@ -2446,16 +2430,13 @@ function renderAccountPage(req) {
       white-space: nowrap;
       font-weight: 800;
       color: #eaf6ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
-        var(--button-img) center / 100% 100% no-repeat;
-      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      background: var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: none;
       text-shadow: 0 1px 0 #000;
     }
     .navlinks a:hover {
       color: #ffffff;
-      border-color: rgba(174,220,255,.72);
-      filter: brightness(1.13);
+      filter: brightness(1.08);
     }
     .lang-switch {
       display: flex;
@@ -2564,7 +2545,7 @@ function renderAccountPage(req) {
       min-height: 50px;
       padding: 0 20px;
       border-radius: 8px;
-      border: 1px solid var(--line);
+      border: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -2576,12 +2557,9 @@ function renderAccountPage(req) {
     }
     .button.primary {
       color: #f4f8ff;
-      background:
-        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
-        var(--button-img) center / 100% 100% no-repeat;
-      border-color: rgba(140,200,255,.44);
+      background: var(--button-img) center / 100% 100% no-repeat;
       text-shadow: 0 1px 0 #000;
-      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
+      box-shadow: none;
     }
     .hint {
       color: var(--muted);
