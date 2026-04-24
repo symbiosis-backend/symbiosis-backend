@@ -969,6 +969,7 @@ function renderChangelogPage(req) {
         <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
           <a href="${escapeHtml(withLangPath("/", locale))}">${escapeHtml(copy.home)}</a>
           <a href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.download)}</a>
+          <a href="${escapeHtml(withLangPath("/dynasty-legacy", locale))}">Dynasty: Legacy</a>
           <a href="${escapeHtml(withLangPath("/account", locale))}">${escapeHtml(copy.account)}</a>
         </nav>
         <nav class="lang-switch" aria-label="Language">
@@ -1684,6 +1685,7 @@ function renderSymbiosisLandingPage(req) {
       <div class="nav-right">
         <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
           <a href="${escapeHtml(apkUrl)}">${escapeHtml(copy.download)}</a>
+          <a href="${escapeHtml(withLangPath("/dynasty-legacy", locale))}">Dynasty: Legacy</a>
           <a href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.updates)}</a>
           <a href="${escapeHtml(withLangPath("/account", locale))}">${escapeHtml(copy.account)}</a>
           <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(copy.contact)}</a>
@@ -1755,6 +1757,475 @@ function renderSymbiosisLandingPage(req) {
   <footer>
     <div class="shell">
       <span>(c) ${new Date().getFullYear()} DLSymbiosis</span>
+      <span><a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a></span>
+    </div>
+  </footer>
+</body>
+</html>`;
+}
+
+const FLAGSHIP_COPY = {
+  en: {
+    htmlLang: "en",
+    pageTitle: "Dynasty: Legacy | DLSymbiosis",
+    metaDescription: "Discover Dynasty: Legacy, the flagship social city-building project behind DLSymbiosis.",
+    ogDescription: "A flagship social city-builder shaped by coordinated player cooperation in an open world.",
+    homeLabel: "DLSymbiosis home",
+    primaryNav: "Primary navigation",
+    home: "Home",
+    download: "Download",
+    updates: "Chronicles",
+    account: "Profile",
+    contact: "Contact",
+    flagship: "Dynasty: Legacy",
+    eyebrow: "Flagship Project",
+    headline: "Dynasty: Legacy",
+    lead: "Dynasty: Legacy is our flagship social city-building project: an open world designed to strengthen society through coordinated, cooperative work. It is built around shared responsibility, collective construction, and the idea that a world becomes meaningful when its people shape it together.",
+    summaryTitle: "A world built by its own people",
+    summaryText: "This is not a decorative backdrop. It is a living space players will inhabit, develop, organize, and transform over time. Cities, districts, rhythms of growth, and the character of the environment are meant to emerge from player action itself.",
+    pillarOneTitle: "Social foundation",
+    pillarOneText: "At its core, Dynasty: Legacy is a social project. It is designed to reinforce social bonds through cooperation, trust, and long-term participation.",
+    pillarTwoTitle: "Coordinated work",
+    pillarTwoText: "Progress is not built by isolated activity alone. The project asks players to align, divide responsibilities, make shared decisions, and work together toward durable results.",
+    pillarThreeTitle: "An open world to inhabit",
+    pillarThreeText: "The world is meant to be settled by players. It grows as people arrive, build, maintain, and give each place its role within a larger living structure.",
+    pillarFourTitle: "Perception and shared environment",
+    pillarFourText: "We want the project to raise the quality of how people perceive common space, labor, neighborhood, and a shared future. The world should feel inhabited, legible, and socially real.",
+    closingLabel: "Shared authorship",
+    closingText: "Dynasty: Legacy is a world that does not simply host players. It is a world intended to be formed by them.",
+    downloadCta: "Download DLSymbiosis",
+    chroniclesCta: "Read Chronicles",
+    madeForAlt: "Made for Dynasty Legacy",
+    sloganAlt: "Gateway to the Universe",
+    companyAlt: "Ozkullar Company",
+    footer: "Flagship project",
+  },
+  ru: {
+    htmlLang: "ru",
+    pageTitle: "Dynasty: Legacy | DLSymbiosis",
+    metaDescription: "Dynasty: Legacy — флагманский социальный градостроительный проект, вокруг которого строится мир DLSymbiosis.",
+    ogDescription: "Флагманский социальный градостроительный проект, формируемый слаженной работой игроков в открытом мире.",
+    homeLabel: "Главная DLSymbiosis",
+    primaryNav: "Основная навигация",
+    home: "Главная",
+    download: "Скачать",
+    updates: "Хроники",
+    account: "Профиль",
+    contact: "Контакты",
+    flagship: "Dynasty: Legacy",
+    eyebrow: "Флагманский проект",
+    headline: "Dynasty: Legacy",
+    lead: "Dynasty: Legacy — наш флагманский социальный градостроительный проект: открытый мир, созданный для укрепления общества через слаженную и совместную работу игроков. В его основе лежат общая ответственность, коллективное созидание и мысль о том, что мир становится по-настоящему живым тогда, когда его формируют сами люди.",
+    summaryTitle: "Мир, который строят его жители",
+    summaryText: "Это не декоративный фон и не пустая карта. Это живая среда, которую игроки будут заселять, развивать, организовывать и постепенно переосмыслять. Города, районы, ритм роста и сам характер мира здесь должны рождаться из действий игроков.",
+    pillarOneTitle: "Социальный фундамент",
+    pillarOneText: "В основе Dynasty: Legacy лежит социальная идея. Проект задуман как пространство, где укрепляются связи между людьми, привычка к сотрудничеству и чувство общей ответственности.",
+    pillarTwoTitle: "Слаженная совместная работа",
+    pillarTwoText: "Развитие здесь не строится на одиночных действиях. Проект требует координации, распределения ролей, совместных решений и умения работать вместе ради устойчивого результата.",
+    pillarThreeTitle: "Открытый мир для заселения",
+    pillarThreeText: "Этот мир должен быть заселён игроками. Он растёт по мере того, как люди приходят, строят, поддерживают порядок и придают каждому месту собственную функцию в общей системе.",
+    pillarFourTitle: "Качество восприятия среды",
+    pillarFourText: "Мы хотим, чтобы проект повышал качество восприятия общей среды, труда, соседства и совместного будущего. Мир должен ощущаться обжитым, понятным и социально наполненным.",
+    closingLabel: "Общее авторство мира",
+    closingText: "Dynasty: Legacy — это мир, который не просто принимает игроков, а формируется ими самими.",
+    downloadCta: "Скачать DLSymbiosis",
+    chroniclesCta: "Открыть хроники",
+    madeForAlt: "Создано для Dynasty Legacy",
+    sloganAlt: "Gateway to the Universe",
+    companyAlt: "Ozkullar Company",
+    footer: "Флагманский проект",
+  },
+  tr: {
+    htmlLang: "tr",
+    pageTitle: "Dynasty: Legacy | DLSymbiosis",
+    metaDescription: "Dynasty: Legacy, DLSymbiosis evreninin arkasindaki amiral sosyal sehir kurma projesidir.",
+    ogDescription: "Oyuncularin uyumlu is birligiyle sekillenen amiral sosyal sehir kurma projesi.",
+    homeLabel: "DLSymbiosis ana sayfasi",
+    primaryNav: "Ana gezinme",
+    home: "Ana sayfa",
+    download: "Indir",
+    updates: "Kronikler",
+    account: "Profil",
+    contact: "Iletisim",
+    flagship: "Dynasty: Legacy",
+    eyebrow: "Amiral Proje",
+    headline: "Dynasty: Legacy",
+    lead: "Dynasty: Legacy, toplum yapisini oyuncularin uyumlu ve ortak emegiyle guclendirmek icin tasarlanmis amiral sosyal sehir kurma projemizdir. Temelinde ortak sorumluluk, kolektif insa ve bir dunyanin insanlar onu birlikte sekillendirdiginde gercekten anlam kazandigi fikri vardir.",
+    summaryTitle: "Kendi halki tarafindan kurulan bir dunya",
+    summaryText: "Bu sadece dekoratif bir arka plan degildir. Oyuncularin yerlesecegi, gelistirecegi, duzenleyecegi ve zamanla donusturecegi yasayan bir alandir. Sehirler, bolgeler, buyumenin ritmi ve cevrenin karakteri dogrudan oyuncu eylemlerinden dogmalidir.",
+    pillarOneTitle: "Sosyal temel",
+    pillarOneText: "Dynasty: Legacy'nin merkezinde sosyal bir fikir vardir. Proje, is birligi, guven ve uzun vadeli katilim yoluyla toplumsal baglari guclendirmek icin tasarlanmistir.",
+    pillarTwoTitle: "Uyumlu ortak calisma",
+    pillarTwoText: "Ilerleme tek basina yapilan hareketlerle kurulmaz. Proje, oyunculardan uyum saglamalarini, sorumluluk paylasmalarini, ortak kararlar almalarini ve kalici sonuclar icin birlikte calismalarini ister.",
+    pillarThreeTitle: "Yerlesilecek acik bir dunya",
+    pillarThreeText: "Bu dunya oyuncular tarafindan doldurulmak uzere tasarlanmistir. Insanlar geldikce, insa ettikce, duzeni korudukca ve her yere daha buyuk yapinin icinde bir rol verdikce dunya buyur.",
+    pillarFourTitle: "Ortak cevreyi algilama kalitesi",
+    pillarFourText: "Projenin ortak mekani, emegi, komsulugu ve ortak gelecegi algilama kalitesini yukseltmesini istiyoruz. Dunya yasanmis, okunabilir ve toplumsal olarak gercek hissedilmelidir.",
+    closingLabel: "Ortak yazarlik",
+    closingText: "Dynasty: Legacy, oyunculari sadece icinde barindiran bir dunya degildir. Onlarin elleriyle bicimlenen bir dunyadir.",
+    downloadCta: "DLSymbiosis'i indir",
+    chroniclesCta: "Kronikleri ac",
+    madeForAlt: "Dynasty Legacy icin uretildi",
+    sloganAlt: "Gateway to the Universe",
+    companyAlt: "Ozkullar Company",
+    footer: "Amiral proje",
+  },
+};
+
+function renderDynastyLegacyPage(req) {
+  const locale = getLandingLocale(req);
+  const copy = FLAGSHIP_COPY[locale] || FLAGSHIP_COPY.en;
+  const supportEmail = "support@dlsymbiosis.com";
+  const logoUrl = getSiteAssetUrl("SymbiosisLogo.png");
+  const madeForUrl = getSiteAssetUrl("MadeForDynastyLegacy.png");
+  const sloganUrl = getSiteAssetUrl("Slogan.png");
+  const companyUrl = getSiteAssetUrl("OzkullarCompany.png");
+  const buttonUrl = SITE_BUTTON_FRAME_URL;
+
+  return `<!doctype html>
+<html lang="${escapeHtml(copy.htmlLang)}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1014">
+  <meta name="description" content="${escapeHtml(copy.metaDescription)}">
+  <meta property="og:title" content="${escapeHtml(copy.pageTitle)}">
+  <meta property="og:description" content="${escapeHtml(copy.ogDescription)}">
+  <meta property="og:image" content="${escapeHtml(madeForUrl)}">
+  <link rel="icon" type="image/png" href="${escapeHtml(logoUrl)}">
+  <title>${escapeHtml(copy.pageTitle)}</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #00020b;
+      --ink: #f4f8ff;
+      --muted: #aab8cc;
+      --line: rgba(149,194,255,.24);
+      --panel: #06101d;
+      --gold: #8cc8ff;
+      --jade: #62d8ff;
+      --button-img: url("${escapeHtml(buttonUrl)}");
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(98,216,255,.08), transparent 38%),
+        linear-gradient(180deg, #02050c 0%, #00020b 100%);
+      min-height: 100vh;
+    }
+    a { color: inherit; }
+    .shell { width: min(1100px, calc(100% - 32px)); margin: 0 auto; }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(12,15,18,.88);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    .nav {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+    .brand img {
+      display: block;
+      width: min(190px, 42vw);
+      height: auto;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+    }
+    .navlinks {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .navlinks a {
+      min-height: 42px;
+      padding: 0 18px;
+      border: 1px solid rgba(140,200,255,.42);
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      white-space: nowrap;
+      font-weight: 800;
+      color: #eaf6ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.10), rgba(2,10,24,.42)),
+        var(--button-img) center / 100% 100% no-repeat;
+      box-shadow: inset 0 0 18px rgba(98,216,255,.12), 0 0 18px rgba(33,89,161,.12);
+      text-shadow: 0 1px 0 #000;
+    }
+    .navlinks a:hover {
+      color: #ffffff;
+      border-color: rgba(174,220,255,.72);
+      filter: brightness(1.13);
+    }
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid rgba(140,200,255,.34);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .lang-switch a {
+      min-width: 34px;
+      min-height: 30px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .lang-switch a.active {
+      color: #001020;
+      background: linear-gradient(180deg, #dff5ff, #62d8ff);
+    }
+    .hero {
+      padding: 76px 0 34px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 44px;
+      align-items: start;
+    }
+    .eyebrow {
+      color: var(--gold);
+      font-weight: 750;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(46px, 7vw, 88px);
+      line-height: .94;
+      letter-spacing: 0;
+    }
+    .lead {
+      max-width: 700px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: clamp(18px, 2vw, 22px);
+      line-height: 1.56;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 32px;
+    }
+    .button {
+      min-height: 50px;
+      padding: 0 20px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-weight: 800;
+      border: 1px solid var(--line);
+    }
+    .button.primary {
+      color: #f4f8ff;
+      background:
+        linear-gradient(180deg, rgba(140,200,255,.12), rgba(2,10,24,.54)),
+        var(--button-img) center / 100% 100% no-repeat;
+      border-color: rgba(140,200,255,.44);
+      text-shadow: 0 1px 0 #000;
+      box-shadow: inset 0 0 20px rgba(98,216,255,.12), 0 0 24px rgba(33,89,161,.14);
+    }
+    .button.secondary {
+      color: var(--ink);
+      background: transparent;
+    }
+    .summary-card,
+    .closing {
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(98,216,255,.07), rgba(4,10,20,.9)),
+        var(--panel);
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.24);
+    }
+    .summary-card img,
+    .closing-art img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .summary-card h2,
+    .closing h2 {
+      margin: 18px 0 0;
+      font-size: 26px;
+      line-height: 1.15;
+    }
+    .summary-card p,
+    .closing p,
+    .pillar p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      line-height: 1.62;
+    }
+    .pillars {
+      padding: 14px 0 24px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .pillar {
+      min-height: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015)),
+        rgba(6,16,29,.85);
+    }
+    .pillar h3 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+    }
+    .closing {
+      margin: 0 0 74px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 28px;
+      align-items: center;
+    }
+    .closing .eyebrow {
+      margin-bottom: 10px;
+    }
+    .closing-art {
+      display: grid;
+      gap: 14px;
+    }
+    footer {
+      padding: 28px 0 42px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+    }
+    footer .shell {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 920px) {
+      .hero,
+      .closing {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 22px, 1100px); }
+      .nav { align-items: flex-start; flex-direction: column; padding: 12px 0; }
+      .nav-right { width: 100%; justify-content: space-between; gap: 12px; }
+      .navlinks { flex-wrap: wrap; gap: 8px; }
+      .navlinks a { min-height: 38px; padding: 0 14px; }
+      .actions { display: grid; }
+      .button { width: 100%; }
+      .pillars { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell nav">
+      <a class="brand" href="${escapeHtml(withLangPath("/", locale))}" aria-label="${escapeHtml(copy.homeLabel)}">
+        <img src="${escapeHtml(logoUrl)}" alt="DLSymbiosis" width="1187" height="188">
+      </a>
+      <div class="nav-right">
+        <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
+          <a href="${escapeHtml(withLangPath("/", locale))}">${escapeHtml(copy.home)}</a>
+          <a href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.download)}</a>
+          <a href="${escapeHtml(withLangPath("/dynasty-legacy", locale))}">${escapeHtml(copy.flagship)}</a>
+          <a href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.updates)}</a>
+          <a href="${escapeHtml(withLangPath("/account", locale))}">${escapeHtml(copy.account)}</a>
+          <a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(copy.contact)}</a>
+        </nav>
+        <nav class="lang-switch" aria-label="Language">
+          <a class="${locale === "en" ? "active" : ""}" href="/dynasty-legacy?lang=en" lang="en">EN</a>
+          <a class="${locale === "ru" ? "active" : ""}" href="/dynasty-legacy?lang=ru" lang="ru">RU</a>
+          <a class="${locale === "tr" ? "active" : ""}" href="/dynasty-legacy?lang=tr" lang="tr">TR</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="shell hero">
+      <div>
+        <div class="eyebrow">${escapeHtml(copy.eyebrow)}</div>
+        <h1>${escapeHtml(copy.headline)}</h1>
+        <p class="lead">${escapeHtml(copy.lead)}</p>
+        <div class="actions">
+          <a class="button primary" href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.downloadCta)}</a>
+          <a class="button secondary" href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.chroniclesCta)}</a>
+        </div>
+      </div>
+      <aside class="summary-card">
+        <img src="${escapeHtml(madeForUrl)}" alt="${escapeHtml(copy.madeForAlt)}" width="1260" height="264">
+        <h2>${escapeHtml(copy.summaryTitle)}</h2>
+        <p>${escapeHtml(copy.summaryText)}</p>
+      </aside>
+    </section>
+    <section class="shell pillars">
+      <article class="pillar">
+        <h3>${escapeHtml(copy.pillarOneTitle)}</h3>
+        <p>${escapeHtml(copy.pillarOneText)}</p>
+      </article>
+      <article class="pillar">
+        <h3>${escapeHtml(copy.pillarTwoTitle)}</h3>
+        <p>${escapeHtml(copy.pillarTwoText)}</p>
+      </article>
+      <article class="pillar">
+        <h3>${escapeHtml(copy.pillarThreeTitle)}</h3>
+        <p>${escapeHtml(copy.pillarThreeText)}</p>
+      </article>
+      <article class="pillar">
+        <h3>${escapeHtml(copy.pillarFourTitle)}</h3>
+        <p>${escapeHtml(copy.pillarFourText)}</p>
+      </article>
+    </section>
+    <section class="shell closing">
+      <div>
+        <div class="eyebrow">${escapeHtml(copy.closingLabel)}</div>
+        <h2>${escapeHtml(copy.flagship)}</h2>
+        <p>${escapeHtml(copy.closingText)}</p>
+      </div>
+      <div class="closing-art" aria-label="${escapeHtml(copy.flagship)}">
+        <img src="${escapeHtml(sloganUrl)}" alt="${escapeHtml(copy.sloganAlt)}" width="951" height="303">
+        <img src="${escapeHtml(companyUrl)}" alt="${escapeHtml(copy.companyAlt)}" width="1047" height="312">
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="shell">
+      <span>(c) ${new Date().getFullYear()} DLSymbiosis / ${escapeHtml(copy.footer)}</span>
       <span><a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a></span>
     </div>
   </footer>
@@ -2186,6 +2657,7 @@ function renderAccountPage(req) {
         <nav class="navlinks" aria-label="${escapeHtml(copy.primaryNav)}">
           <a href="${escapeHtml(withLangPath("/", locale))}">${escapeHtml(copy.home)}</a>
           <a href="${escapeHtml(withLangPath("/download", locale))}">${escapeHtml(copy.download)}</a>
+          <a href="${escapeHtml(withLangPath("/dynasty-legacy", locale))}">Dynasty: Legacy</a>
           <a href="${escapeHtml(withLangPath("/changelog", locale))}">${escapeHtml(copy.updates)}</a>
           <a href="mailto:support@dlsymbiosis.com">${escapeHtml(copy.contact)}</a>
         </nav>
@@ -3537,6 +4009,10 @@ app.get("/", (req, res) => {
 
 app.get("/download", (req, res) => {
   res.type("html").send(renderSymbiosisLandingPage(req));
+});
+
+app.get("/dynasty-legacy", (req, res) => {
+  res.type("html").send(renderDynastyLegacyPage(req));
 });
 
 app.get("/account", (req, res) => {
