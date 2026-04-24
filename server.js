@@ -43,12 +43,12 @@ const SEED_TEST_NICKNAME = process.env.SEED_TEST_NICKNAME || "TestPlayer";
 const SEED_TEST_PUBLIC_PLAYER_ID = process.env.SEED_TEST_PUBLIC_PLAYER_ID || "MB-TEST0001";
 const RANKED_QUEUE_TIMEOUT_SECONDS = readIntEnv("RANKED_QUEUE_TIMEOUT_SECONDS", 90);
 const RANKED_MATCH_TTL_SECONDS = readIntEnv("RANKED_MATCH_TTL_SECONDS", 60 * 60 * 3);
-const ANDROID_EMBEDDED_VERSION_NAME = "1.0.8";
-const ANDROID_EMBEDDED_VERSION_CODE = 100008;
+const ANDROID_EMBEDDED_VERSION_NAME = "1.0.9";
+const ANDROID_EMBEDDED_VERSION_CODE = 100009;
 const ANDROID_EMBEDDED_APK_URL = "https://dlsymbiosis.com/downloads/symbiosis-latest.apk";
-const ANDROID_EMBEDDED_APK_SHA256 = "d6ba7f6885cdabed19d549ab1772571667cce567158817c4bb72b79f0ccc1043";
-const ANDROID_EMBEDDED_APK_SIZE_BYTES = 73785894;
-const ANDROID_EMBEDDED_RELEASE_NOTES = "Project Chronicles: dynasty vault and bank moved into the central point, while the profile block, vault, and bank now share a stable upper-left anchor.";
+const ANDROID_EMBEDDED_APK_SHA256 = "19c1182c33d9acb156a89549c4cbcbb92197da74f74e9f460116ea1fc08feaab";
+const ANDROID_EMBEDDED_APK_SIZE_BYTES = 82248381;
+const ANDROID_EMBEDDED_RELEASE_NOTES = "Project Chronicles: battle lobby now has its own top bar, new windows, battle buttons, the Main font, and a cleaner screen without chat or friends.";
 
 const rankedQueue = new Map();
 const rankedMatches = new Map();
@@ -261,7 +261,7 @@ function getAndroidUpdateManifest() {
     updateUrl,
     apkAvailable: apk.exists,
     apkSizeBytes: apk.sizeBytes,
-    releaseNotes: process.env.ANDROID_RELEASE_NOTES || "Project Chronicles: dynasty vault, bank, and the central point layout are ready.",
+    releaseNotes: process.env.ANDROID_RELEASE_NOTES || "Project Chronicles: battle lobby now has its own top bar, new windows, battle buttons, the Main font, and a cleaner screen without chat or friends.",
     checkedAt: new Date().toISOString(),
   };
   const embedded = {
@@ -346,6 +346,18 @@ function getSiteAssetUrl(fileName) {
 
 function getChangelogEntries() {
   return [
+    {
+      version: "1.0.9",
+      versionCode: 100009,
+      date: "2026-04-24",
+      title: "The Battle Lobby Chapter",
+      summary: "The battle lobby received its own framed identity and a calmer screen. The top bar, settings window, battle search windows, and core buttons now speak one visual language, while chat and friends no longer cover the room.",
+      changes: [
+        "Built a separate battle lobby skin with its own top bar, settings window, and button frames.",
+        "Applied the Main font to the battle lobby and restyled random, ranked, and Wi-Fi battle windows with the battle frame.",
+        "Removed chat and friends from the battle lobby so the battle screen stays clean."
+      ]
+    },
     {
       version: "1.0.8",
       versionCode: 100008,
@@ -519,6 +531,15 @@ const CHANGELOG_COPY = {
 
 const CHANGELOG_ENTRY_COPY = {
   ru: {
+    "1.0.9": {
+      title: "Глава о battle lobby",
+      summary: "Боевое лобби получило собственную рамочную идентичность и более спокойный экран. Верхняя панель, окно настроек, окна поиска боя и основные кнопки теперь говорят на одном визуальном языке, а чат и друзья больше не перекрывают комнату.",
+      changes: [
+        "Для battle lobby собран отдельный визуальный набор с собственным top bar, окном настроек и рамками кнопок.",
+        "В боевом лобби применён тот же шрифт, что и в Main, а окна random, ranked и Wi-Fi боя переоформлены в боевом стиле.",
+        "Чат и друзья убраны из battle lobby, чтобы экран боя оставался чистым."
+      ]
+    },
     "1.0.8": {
       title: "Глава о династии и центральном пункте",
       summary: "Эта глава перевела Symbiosis от разрозненных кнопок к более спокойному центральному пункту. Профиль, династическое хранилище и банк теперь живут вместе в левом верхнем углу, как первый маленький административный район аккаунта.",
@@ -602,6 +623,15 @@ const CHANGELOG_ENTRY_COPY = {
     }
   },
   tr: {
+    "1.0.9": {
+      title: "Battle Lobby Bolumu",
+      summary: "Battle lobby kendi cerceveli kimligini ve daha sakin bir ekrani aldi. Ust bar, ayarlar penceresi, savas arama pencereleri ve ana dugmeler artik tek bir gorsel dil paylasiyor; sohbet ve arkadaslar da artik odayi kaplamiyor.",
+      changes: [
+        "Battle lobby icin kendi top bar'i, ayarlar penceresi ve dugme cerceveleri olan ayri bir gorsel set hazirlandi.",
+        "Main fontu battle lobby'ye uygulandi ve random, ranked ve Wi-Fi savas pencereleri battle cercevesiyle yeniden stillendi.",
+        "Battle lobby'den sohbet ve arkadaslar kaldirildi; boylece savas ekrani temiz kaldi."
+      ]
+    },
     "1.0.8": {
       title: "Hanedan ve Merkez Bolum",
       summary: "Bu bolum Symbiosis'i daginik dugmelerden daha sakin bir merkez bolume tasidi. Profil, hanedan deposu ve banka artik sol ust kosede birlikte duruyor; hesabin ilk kucuk yonetim alani gibi.",
@@ -1204,7 +1234,7 @@ const LANDING_COPY = {
     updated: "Updated",
     latestBuild: "Latest build",
     buildLabel: "Latest Android build",
-    releaseNotes: "Project Chronicles: dynasty vault and bank moved into the central point, while the profile block now shares a stable anchor layer with them.",
+    releaseNotes: "Project Chronicles: battle lobby now has its own top bar, new windows, battle buttons, the Main font, and a cleaner screen without chat or friends.",
     platform: "Platform",
     androidApk: "Android APK",
     mode: "Mode",
@@ -1238,7 +1268,7 @@ const LANDING_COPY = {
     updated: "Обновлено",
     latestBuild: "Последняя сборка",
     buildLabel: "Последняя Android-сборка",
-    releaseNotes: "Хроники нашего проекта: династическое хранилище и банк пришли в центральный пункт, а профильный блок получил общий стабильный якорь.",
+    releaseNotes: "Хроники battle lobby: боевое лобби получило отдельный top bar, новые окна и кнопки, общий шрифт из Main и чистый экран без чата и друзей.",
     platform: "Платформа",
     androidApk: "APK для Android",
     mode: "Режим",
@@ -1272,7 +1302,7 @@ const LANDING_COPY = {
     updated: "Güncellendi",
     latestBuild: "Son sürüm",
     buildLabel: "Son Android sürümü",
-    releaseNotes: "Proje Kronikleri: hanedan deposu ve banka merkez bolume tasindi, profil blogu onlarla ayni sabit anchor katmanini paylasiyor.",
+    releaseNotes: "Proje Kronikleri: battle lobby artik kendi top bar'ina, yeni pencerelere, yeni dugmelere ve Main fontuna sahip; savas ekrani sohbetten ve arkadaslardan temizlendi.",
     platform: "Platform",
     androidApk: "Android APK",
     mode: "Mod",
